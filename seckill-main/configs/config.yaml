@@ -1,0 +1,34 @@
+server:
+  http:
+    addr: 0.0.0.0:8001
+    timeout: 1s
+  grpc:
+    addr: 0.0.0.0:8002
+    timeout: 1s
+data:
+  database:
+    addr: 127.0.0.1:3306
+    user: root
+    password: niuge
+    dataBase: bitstorm
+    maxIdleConn : 2000
+    maxOpenConn: 20000
+    maxIdleTime: 30
+
+  redis:
+    addr: 127.0.0.1:6379
+    db: 0
+    passWord: niuge
+
+  kafka:
+    producer:
+      brokers: ["127.0.0.1:9092"]
+      topic: seckill
+      ack: 0
+    consumer:
+      brokers: ["127.0.0.1:9092"]
+      topic: seckill
+      offset: 0
+micro:
+  lb:
+    addr: 127.0.0.1:20001

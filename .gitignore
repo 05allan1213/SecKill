@@ -1,0 +1,39 @@
+# Ignore Go build artifacts
+*.a
+*.so
+*.dylib
+*.dll
+*.exe
+*.test
+*.mod
+*.sum
+bin/
+pkg/
+
+# Ignore IDE-specific files
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# Ignore Docker and other tool-specific files
+Dockerfile.*
+.dockerenv
+.dockerignore
+.env
+.env.local
+.env.*.local
+.env.test
+.env.*.test
+.env.*.local.test
+
+# Ignore generated files and directories
+*.pb.go
+*.pb.gw.go
+*.pb.validate.go
+*.pb.mock.go
+*.pb.gw.mock.go
+*.pb.validate.mock.go
+wrkbench/
+third_party/
