@@ -21,6 +21,12 @@ import (
 //	@param ctx
 func GetUserInfo(ctx *gin.Context) {
 	userIDStr := ctx.Request.Header.Get(constant.UserID)
+	if userIDStr == "" {
+		userIDStr = ctx.Query("userID")
+	}
+	if userIDStr == "" {
+		userIDStr = ctx.Query("user_id")
+	}
 	traceID := ctx.Request.Header.Get(constant.TraceID)
 
 	userID, _ := strconv.Atoi(userIDStr)
@@ -32,6 +38,21 @@ func GetUserInfo(ctx *gin.Context) {
 	resp, err := us.GetUser(c, &req)
 	if err != nil {
 		fmt.Println("get user err", err)
+	}
+	ctx.JSON(nethttp.StatusOK, resp)
+}
+
+func GetUserInfoByName(ctx *gin.Context) {
+	userName := ctx.Query("user_name")
+	if userName == "" {
+		userName = ctx.Query("userName")
+	}
+	traceID := ctx.Request.Header.Get(constant.TraceID)
+	req := pb.GetUserByNameRequest{UserName: userName}
+	c := context.WithValue(context.Background(), constant.TraceID, traceID)
+	resp, err := us.GetUserByName(c, &req)
+	if err != nil {
+		fmt.Println("get user by name err", err)
 	}
 	ctx.JSON(nethttp.StatusOK, resp)
 }
@@ -52,6 +73,7 @@ func InfoLog() gin.HandlerFunc {
 		// ***** 2. set requestID for goroutine ctx ****** //
 		//duration := float64(time.Since(beginTime)) / float64(time.Second)
 		ctx := context.WithValue(context.Background(), constant.TraceID, traceID)
+		c.Next()
 		log.InfoContextf(ctx, "ReqPath[%s]-Cost[%v]\n", c.Request.URL.Path, time.Since(beginTime))
 	}
 }

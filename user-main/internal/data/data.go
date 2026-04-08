@@ -3,7 +3,7 @@ package data
 import (
 	"github.com/BitofferHub/pkg/middlewares/cache"
 	"github.com/BitofferHub/pkg/middlewares/gormcli"
-	"github.com/BitofferHub/user/internal/conf"
+	cfg "github.com/BitofferHub/user/internal/config"
 	_ "github.com/go-sql-driver/mysql"
 	"gorm.io/gorm"
 )
@@ -27,28 +27,22 @@ func (p *Data) GetCache() *cache.Client {
 	return p.rdb
 }
 
-// NewData
-//
-//	@Author <a href="https://bitoffer.cn">狂飙训练营</a>
-//	@Description:
-//	@param dt
-//	@return *Data
-//	@return error
-func NewData(dt *conf.Data) (*Data, error) {
+func NewDataFromConfig(dt cfg.DataConf) (*Data, error) {
 	gormcli.Init(
-		gormcli.WithAddr(dt.GetDatabase().GetAddr()),
-		gormcli.WithUser(dt.GetDatabase().GetUser()),
-		gormcli.WithPassword(dt.GetDatabase().GetPassword()),
-		gormcli.WithDataBase(dt.GetDatabase().GetDataBase()),
-		gormcli.WithMaxIdleConn(int(dt.GetDatabase().GetMaxIdleConn())),
-		gormcli.WithMaxOpenConn(int(dt.GetDatabase().GetMaxOpenConn())),
-		gormcli.WithMaxIdleTime(int64(dt.GetDatabase().GetMaxIdleTime())),
+		gormcli.WithAddr(dt.Database.Addr),
+		gormcli.WithUser(dt.Database.User),
+		gormcli.WithPassword(dt.Database.Password),
+		gormcli.WithDataBase(dt.Database.DataBase),
+		gormcli.WithMaxIdleConn(int(dt.Database.MaxIdleConn)),
+		gormcli.WithMaxOpenConn(int(dt.Database.MaxOpenConn)),
+		gormcli.WithMaxIdleTime(int64(dt.Database.MaxIdleTime)),
 	)
 	cache.Init(
-		cache.WithAddr(dt.GetRedis().Addr),
-		cache.WithPassWord(dt.GetRedis().PassWord),
-		cache.WithDB(int(dt.GetRedis().Db)),
-		cache.WithPoolSize(int(dt.GetRedis().PoolSize)))
+		cache.WithAddr(dt.Redis.Addr),
+		cache.WithPassWord(dt.Redis.PassWord),
+		cache.WithDB(int(dt.Redis.Db)),
+		cache.WithPoolSize(int(dt.Redis.PoolSize)),
+	)
 	dta := &Data{db: gormcli.GetDB(), rdb: cache.GetRedisCli()}
 	data = dta
 	return dta, nil

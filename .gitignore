@@ -37,3 +37,5 @@ Dockerfile.*
 *.pb.validate.mock.go
 wrkbench/
 third_party/
+
+*.md
