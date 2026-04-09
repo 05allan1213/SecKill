@@ -2,7 +2,7 @@ package biz
 
 import (
 	"context"
-	"github.com/BitofferHub/pkg/middlewares/log"
+	"github.com/BitofferHub/user/internal/log"
 	"time"
 )
 

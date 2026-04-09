@@ -1,13 +1,17 @@
 package data
 
 import (
+	"fmt"
 	"github.com/BitofferHub/pkg/middlewares/cache"
-	"github.com/BitofferHub/pkg/middlewares/gormcli"
-	"github.com/BitofferHub/pkg/middlewares/mq"
 	cfg "github.com/BitofferHub/seckill/internal/config"
+	bitlog "github.com/BitofferHub/seckill/internal/log"
+	"github.com/BitofferHub/seckill/internal/mq"
 	_ "github.com/go-sql-driver/mysql"
+	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
+	gormlogger "gorm.io/gorm/logger"
 	"sync"
+	"time"
 )
 
 // Data .
@@ -52,16 +56,10 @@ func (p *Data) Close() {
 }
 
 func NewDataFromConfig(dt cfg.DataConf) (*Data, error) {
-	gormcli.Init(
-		gormcli.WithAddr(dt.Database.Addr),
-		gormcli.WithUser(dt.Database.User),
-		gormcli.WithPassword(dt.Database.Password),
-		gormcli.WithDataBase(dt.Database.DataBase),
-		gormcli.WithMaxIdleConn(int(dt.Database.MaxIdleConn)),
-		gormcli.WithMaxOpenConn(int(dt.Database.MaxOpenConn)),
-		gormcli.WithMaxIdleTime(int64(dt.Database.MaxIdleTime)),
-		gormcli.WithSlowThresholdMillisecond(10),
-	)
+	db, err := openDB(dt.Database, 10)
+	if err != nil {
+		return nil, err
+	}
 	cache.Init(
 		cache.WithAddr(dt.Redis.Addr),
 		cache.WithPassWord(dt.Redis.PassWord),
@@ -78,7 +76,33 @@ func NewDataFromConfig(dt cfg.DataConf) (*Data, error) {
 		panic("nil producer")
 	}
 	consumer := newManagedKafkaConsumer(dt.Kafka.Consumer)
-	dta := &Data{db: gormcli.GetDB(), rdb: cache.GetRedisCli(), mqProducer: producer, mqConsumer: consumer}
+	dta := &Data{db: db, rdb: cache.GetRedisCli(), mqProducer: producer, mqConsumer: consumer}
 	data = dta
 	return dta, nil
+}
+
+func openDB(conf cfg.DatabaseConf, slowThresholdMillisecond int64) (*gorm.DB, error) {
+	dsn := fmt.Sprintf("%s:%s@(%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
+		conf.User, conf.Password, conf.Addr, conf.DataBase)
+
+	gormCfg := &gorm.Config{
+		Logger: gormlogger.Default.LogMode(gormlogger.Silent),
+	}
+	if slowThresholdMillisecond > 0 {
+		gormCfg.Logger = bitlog.NewGormLogger(slowThresholdMillisecond)
+	}
+
+	db, err := gorm.Open(mysql.Open(dsn), gormCfg)
+	if err != nil {
+		return nil, err
+	}
+
+	sqlDB, err := db.DB()
+	if err != nil {
+		return nil, err
+	}
+	sqlDB.SetMaxIdleConns(int(conf.MaxIdleConn))
+	sqlDB.SetMaxOpenConns(int(conf.MaxOpenConn))
+	sqlDB.SetConnMaxLifetime(time.Duration(conf.MaxIdleTime) * time.Second)
+	return db, nil
 }

@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/BitofferHub/pkg/middlewares/log"
+	"github.com/BitofferHub/seckill/internal/log"
 	"time"
 )
 

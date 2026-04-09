@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/BitofferHub/pkg/middlewares/log"
 	"github.com/BitofferHub/seckill/internal/biz"
+	"github.com/BitofferHub/seckill/internal/log"
 	"time"
 )
 

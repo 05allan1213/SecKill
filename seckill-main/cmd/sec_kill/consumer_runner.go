@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	bitlog "github.com/BitofferHub/pkg/middlewares/log"
+	bitlog "github.com/BitofferHub/seckill/internal/log"
 	"github.com/BitofferHub/seckill/internal/svc"
 )
 

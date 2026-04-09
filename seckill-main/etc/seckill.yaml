@@ -4,8 +4,6 @@ Etcd:
   Hosts:
     - 127.0.0.1:20001
   Key: seckill.rpc
-CompatHttp:
-  Addr: 0.0.0.0:8001
 Data:
   Database:
     Addr: 127.0.0.1:3306

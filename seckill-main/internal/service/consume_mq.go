@@ -5,9 +5,9 @@ import (
 	"time"
 
 	"github.com/BitofferHub/pkg/constant"
-	"github.com/BitofferHub/pkg/middlewares/log"
 	"github.com/BitofferHub/seckill/internal/biz"
 	"github.com/BitofferHub/seckill/internal/data"
+	"github.com/BitofferHub/seckill/internal/log"
 )
 
 func (s *SecKillService) HandleConsumedMessage(ctx context.Context, message []byte) error {

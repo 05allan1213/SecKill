@@ -4,8 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/BitofferHub/pkg/middlewares/log"
 	"github.com/BitofferHub/user/internal/biz"
+	"github.com/BitofferHub/user/internal/log"
 )
 
 type userRepo struct {

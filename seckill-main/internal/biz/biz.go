@@ -2,7 +2,7 @@ package biz
 
 import (
 	"github.com/BitofferHub/pkg/middlewares/cache"
-	"github.com/BitofferHub/pkg/middlewares/mq"
+	"github.com/BitofferHub/seckill/internal/mq"
 	"gorm.io/gorm"
 )
 

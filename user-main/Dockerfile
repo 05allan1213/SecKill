@@ -17,7 +17,6 @@ COPY --from=builder /src/bin /app
 
 WORKDIR /app
 
-EXPOSE 8668
 EXPOSE 8669
 VOLUME /data/conf
 

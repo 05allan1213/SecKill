@@ -4,8 +4,6 @@ Etcd:
   Hosts:
     - 192.168.5.51:20000
   Key: user.rpc
-CompatHttp:
-  Addr: 0.0.0.0:8668
 Data:
   Database:
     Addr: 192.168.5.51:3306

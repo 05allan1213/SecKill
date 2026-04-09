@@ -4,12 +4,7 @@ import "github.com/zeromicro/go-zero/zrpc"
 
 type Config struct {
 	zrpc.RpcServerConf
-	CompatHttp CompatHttpConf
-	Data       DataConf
-}
-
-type CompatHttpConf struct {
-	Addr string
+	Data DataConf
 }
 
 type DataConf struct {

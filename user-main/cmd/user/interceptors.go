@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/BitofferHub/pkg/constant"
-	bitlog "github.com/BitofferHub/pkg/middlewares/log"
+	bitlog "github.com/BitofferHub/user/internal/log"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 )

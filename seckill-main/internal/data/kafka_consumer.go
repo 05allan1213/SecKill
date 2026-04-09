@@ -5,9 +5,9 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/BitofferHub/pkg/middlewares/log"
-	"github.com/BitofferHub/pkg/middlewares/mq"
 	"github.com/BitofferHub/seckill/internal/config"
+	"github.com/BitofferHub/seckill/internal/log"
+	"github.com/BitofferHub/seckill/internal/mq"
 	"github.com/segmentio/kafka-go"
 )
 

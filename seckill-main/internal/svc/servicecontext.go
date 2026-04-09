@@ -1,10 +1,10 @@
 package svc
 
 import (
-	zaplog "github.com/BitofferHub/pkg/middlewares/log"
 	"github.com/BitofferHub/seckill/internal/biz"
 	"github.com/BitofferHub/seckill/internal/config"
 	"github.com/BitofferHub/seckill/internal/data"
+	zaplog "github.com/BitofferHub/seckill/internal/log"
 	"github.com/BitofferHub/seckill/internal/service"
 )
 
@@ -15,13 +15,7 @@ type ServiceContext struct {
 }
 
 func NewServiceContext(c config.Config) *ServiceContext {
-	zaplog.Init(
-		zaplog.WithLogPath("./log/"),
-		zaplog.WithLogLevel("info"),
-		zaplog.WithFileName("bitstorm.log"),
-		zaplog.WithMaxBackups(100),
-		zaplog.WithMaxSize(1024*1024*10),
-	)
+	zaplog.Init("./log/")
 
 	dataLayer, err := data.NewDataFromConfig(c.Data)
 	if err != nil {

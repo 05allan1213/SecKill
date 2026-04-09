@@ -12,7 +12,6 @@ import (
 	"github.com/BitofferHub/seckill/internal/svc"
 
 	"github.com/zeromicro/go-zero/core/conf"
-	"github.com/zeromicro/go-zero/core/logx"
 	"github.com/zeromicro/go-zero/core/service"
 	"github.com/zeromicro/go-zero/zrpc"
 	"google.golang.org/grpc"
@@ -31,22 +30,6 @@ func main() {
 
 	svcCtx := svc.NewServiceContext(c)
 	defer svcCtx.Data.Close()
-
-	compatHTTP, err := StartCompatHTTPServer(c, svcCtx)
-	if err != nil {
-		panic(err)
-	}
-	defer func() {
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		_ = compatHTTP.Shutdown(shutdownCtx)
-	}()
-
-	cleanupCompat, err := RegisterCompatServices(c)
-	if err != nil {
-		panic(err)
-	}
-	defer cleanupCompat()
 
 	consumerRunner := NewConsumerRunner(svcCtx)
 	if err := consumerRunner.Start(); err != nil {
@@ -69,6 +52,5 @@ func main() {
 	defer s.Stop()
 
 	fmt.Printf("Starting seckill rpc server at %s...\n", c.ListenOn)
-	logx.Infof("compatibility http server listening on %s", c.CompatHttp.Addr)
 	s.Start()
 }

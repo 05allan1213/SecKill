@@ -3,8 +3,8 @@ package data
 import (
 	"context"
 	"encoding/json"
-	"github.com/BitofferHub/pkg/middlewares/log"
 	"github.com/BitofferHub/seckill/internal/biz"
+	"github.com/BitofferHub/seckill/internal/log"
 )
 
 type secKillMsgRepo struct {

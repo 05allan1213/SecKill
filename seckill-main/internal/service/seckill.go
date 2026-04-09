@@ -4,11 +4,11 @@ import (
 	"context"
 	"fmt"
 	"github.com/BitofferHub/pkg/constant"
-	"github.com/BitofferHub/pkg/middlewares/log"
 	"github.com/BitofferHub/pkg/utils"
 	pb "github.com/BitofferHub/seckill/api/sec_kill/proto"
 	"github.com/BitofferHub/seckill/internal/biz"
 	"github.com/BitofferHub/seckill/internal/data"
+	"github.com/BitofferHub/seckill/internal/log"
 	"gorm.io/gorm"
 	"time"
 )

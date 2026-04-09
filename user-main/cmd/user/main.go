@@ -1,17 +1,15 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"fmt"
 
-	userserver "github.com/BitofferHub/user/internal/server/user"
-	"github.com/BitofferHub/user/internal/config"
-	"github.com/BitofferHub/user/internal/svc"
 	v1 "github.com/BitofferHub/user/api/user/v1"
+	"github.com/BitofferHub/user/internal/config"
+	userserver "github.com/BitofferHub/user/internal/server/user"
+	"github.com/BitofferHub/user/internal/svc"
 
 	"github.com/zeromicro/go-zero/core/conf"
-	"github.com/zeromicro/go-zero/core/logx"
 	"github.com/zeromicro/go-zero/core/service"
 	"github.com/zeromicro/go-zero/zrpc"
 	"google.golang.org/grpc"
@@ -28,20 +26,6 @@ func main() {
 
 	svcCtx := svc.NewServiceContext(c)
 
-	compatHTTP, err := StartCompatHTTPServer(c, svcCtx)
-	if err != nil {
-		panic(err)
-	}
-	defer func() {
-		_ = compatHTTP.Shutdown(context.Background())
-	}()
-
-	cleanupCompat, err := RegisterCompatServices(c)
-	if err != nil {
-		panic(err)
-	}
-	defer cleanupCompat()
-
 	s := zrpc.MustNewServer(c.RpcServerConf, func(grpcServer *grpc.Server) {
 		v1.RegisterUserServer(grpcServer, userserver.NewUserServer(svcCtx))
 
@@ -53,6 +37,5 @@ func main() {
 	defer s.Stop()
 
 	fmt.Printf("Starting user rpc server at %s...\n", c.ListenOn)
-	logx.Infof("compatibility http server listening on %s", c.CompatHttp.Addr)
 	s.Start()
 }
