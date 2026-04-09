@@ -1,0 +1,118 @@
+syntax = "v1"
+
+type LoginRequest {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+type LoginResponse {
+	Code   int64  `json:"code"`
+	Token  string `json:"token"`
+	Expire string `json:"expire"`
+}
+
+type WelcomeResponse {
+	Welcome string `json:"welcome"`
+}
+
+type UserData {
+	UserID   string `json:"userID"`
+	UserName string `json:"userName"`
+	Pwd      string `json:"pwd"`
+	Sex      int64  `json:"sex"`
+	Age      int64  `json:"age"`
+	Email    string `json:"email"`
+	Contact  string `json:"contact"`
+	Mobile   string `json:"mobile"`
+	IdCard   string `json:"idCard"`
+}
+
+type GetUserReply {
+	Code    int64    `json:"code"`
+	Message string   `json:"message"`
+	Data    UserData `json:"data"`
+}
+
+type GetUserByNameRequest {
+	UserName    string `form:"user_name,optional"`
+	UserNameAlt string `form:"userName,optional"`
+}
+
+type SecKillRequest {
+	GoodsNum string `json:"goodsNum"`
+	Num      int32  `json:"num"`
+}
+
+type SecKillV1ReplyData {
+	OrderNum string `json:"orderNum"`
+}
+
+type SecKillV1Reply {
+	Code    int64              `json:"code"`
+	Message string             `json:"message"`
+	Data    SecKillV1ReplyData `json:"data"`
+}
+
+type SecKillV2ReplyData {
+	OrderNum string `json:"orderNum"`
+}
+
+type SecKillV2Reply {
+	Code    int64              `json:"code"`
+	Message string             `json:"message"`
+	Data    SecKillV2ReplyData `json:"data"`
+}
+
+type SecKillV3ReplyData {
+	SecNum string `json:"secNum"`
+}
+
+type SecKillV3Reply {
+	Code    int64              `json:"code"`
+	Message string             `json:"message"`
+	Data    SecKillV3ReplyData `json:"data"`
+}
+
+type GetSecKillInfoRequest {
+	SecNum string `form:"sec_num"`
+}
+
+type GetSecKillInfoReplyData {
+	Status   int64  `json:"status"`
+	OrderNum string `json:"orderNum"`
+	SecNum   string `json:"secNum"`
+	GoodsNum string `json:"goodsNum"`
+}
+
+type GetSecKillInfoReply {
+	Code    int64                   `json:"code"`
+	Message string                  `json:"message"`
+	Data    GetSecKillInfoReplyData `json:"data"`
+}
+
+service gateway-api {
+	@handler Login
+	post /login (LoginRequest) returns (LoginResponse)
+
+	@handler GetUserInfo
+	get /get_user_info returns (WelcomeResponse)
+
+	@handler BitstormGetUserInfo
+	get /bitstorm/get_user_info returns (GetUserReply)
+
+	@handler BitstormGetUserInfoByName
+	get /bitstorm/get_user_info_by_name (GetUserByNameRequest) returns (GetUserReply)
+
+	@handler BitstormSecKillV1
+	post /bitstorm/v1/sec_kill (SecKillRequest) returns (SecKillV1Reply)
+
+	@handler BitstormSecKillV2
+	post /bitstorm/v2/sec_kill (SecKillRequest) returns (SecKillV2Reply)
+
+	@handler BitstormSecKillV3
+	post /bitstorm/v3/sec_kill (SecKillRequest) returns (SecKillV3Reply)
+
+	@handler BitstormGetSecKillInfo
+	get /bitstorm/v3/get_sec_kill_info (GetSecKillInfoRequest) returns (GetSecKillInfoReply)
+}
+

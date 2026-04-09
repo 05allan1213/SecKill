@@ -3,7 +3,8 @@ FROM golang:1.26.1 AS builder
 COPY . /src
 WORKDIR /src
 
-RUN GOPROXY=https://goproxy.cn make build
+RUN GOPROXY=https://goproxy.cn go mod tidy && \
+	GOPROXY=https://goproxy.cn make build
 
 FROM debian:stable-slim
 
@@ -17,8 +18,7 @@ COPY --from=builder /src/bin /app
 
 WORKDIR /app
 
-EXPOSE 8000
-EXPOSE 9000
+EXPOSE 8998
 VOLUME /data/conf
 
-CMD ["./server", "-conf", "/data/conf"]
+CMD ["./gateway", "-f", "/data/conf/gateway.yaml"]

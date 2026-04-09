@@ -3,7 +3,6 @@ package limiter
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/BitofferHub/gateway/internal/conf"
 	"github.com/redis/go-redis/v9"
 	"os"
 )
@@ -18,15 +17,15 @@ func InitLimiter(routeConfigPath string, redisClient *redis.Client,
 		fmt.Println(err)
 		panic(err)
 	}
-	conf.Routes = make(map[string]conf.Route, 0)
-	err = json.Unmarshal(routes, &conf.Routes)
+	routePolicies := make(map[string]RoutePolicy, 0)
+	err = json.Unmarshal(routes, &routePolicies)
 	if err != nil {
 		fmt.Println(err)
 		panic(err)
 	}
 
 	rateLimiterConfig := RateLimiterConfig{
-		Routes:              conf.Routes,
+		Routes:              routePolicies,
 		DefaultRetryTime:    defaultRetryTime,
 		DefaultLimitTimeout: defaultLimitTimeout,
 		DefaultLimitRate:    defaultLimitRate,

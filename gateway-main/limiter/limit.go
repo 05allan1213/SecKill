@@ -3,19 +3,26 @@ package limiter
 import (
 	"context"
 	"crypto/tls"
-	"github.com/BitofferHub/gateway/internal/conf"
+
 	"github.com/BitofferHub/gateway/limiter/tb"
-	"github.com/go-kratos/kratos/v2/log"
 	"github.com/redis/go-redis/v9"
+	"github.com/zeromicro/go-zero/core/logx"
 	"golang.org/x/time/rate"
 	"time"
 )
 
 type RateLimiterConfig struct {
-	Routes              map[string]conf.Route
+	Routes              map[string]RoutePolicy
 	DefaultLimitRate    int
 	DefaultRetryTime    int
 	DefaultLimitTimeout int
+}
+
+type RoutePolicy struct {
+	LimitTimeout int
+	LimitRate    int
+	RetryTime    int
+	Remarks      string
 }
 
 var tbLimiter *tb.TBLimiter
@@ -31,7 +38,7 @@ func NewRateLimiter(config RateLimiterConfig, redisClient *redis.Client) (*RateL
 	ctx := context.Background()
 	tbLimiter, err = tb.NewTBLimiter(ctx, redisClient)
 	if err != nil {
-		log.Errorf("create redis limier error: %+v\n", err)
+		logx.Errorf("create redis limier error: %+v", err)
 		return nil, err
 	}
 	// 为每个接口生成限流配置
@@ -56,18 +63,18 @@ func (r *RateLimiter) Allow(ctx context.Context, url string) (*Result, error) {
 	result := &Result{}
 
 	if err != nil {
-		log.Errorf("limiter redis error %+v\n", err)
+		logx.Errorf("limiter redis error %+v", err)
 		// 如果出错，使用本地限流器
 		localLimit := localRouteLimits[url]
 		if localLimit == nil {
 			// 如果限流器不存在，直接通过
-			log.Errorf("local limiter is not exist: %+s\n", url)
+			logx.Errorf("local limiter is not exist: %+s", url)
 			result.IsAllowed = true
 			return result, nil
 		}
 		if localLimit.Allow() {
 			result.IsAllowed = true
-			log.Infof("local limiter: %+v", url)
+			logx.Infof("local limiter: %+v", url)
 			return result, nil
 		} else {
 			result.IsAllowed = false
@@ -75,7 +82,7 @@ func (r *RateLimiter) Allow(ctx context.Context, url string) (*Result, error) {
 		}
 	}
 
-	log.Infof("limiter allow: %+v, remaining: %+v", res.Allowed, res.Remaining)
+	logx.Infof("limiter allow: %+v, remaining: %+v", res.Allowed, res.Remaining)
 	if res.Allowed > 0 {
 		result.IsAllowed = true
 		return result, nil
