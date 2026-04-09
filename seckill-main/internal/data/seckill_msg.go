@@ -30,7 +30,7 @@ func (r *secKillMsgRepo) SendSecKillMsg(ctx context.Context, data *biz.Data, msg
 		log.ErrorContextf(ctx, "json marshal err %s", err.Error())
 		return err
 	}
-	return producer.SendMessage(msgJson)
+	return producer.SendMessage(ctx, msgJson)
 }
 
 func (r *secKillMsgRepo) UnmarshalSecKillMsg(ctx context.Context,

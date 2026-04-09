@@ -30,7 +30,7 @@ func NewQuotaRepo(data *Data) biz.QuotaRepo {
 }
 
 func (r *quotaRepo) Save(ctx context.Context, data *biz.Data, g *biz.Quota) (*biz.Quota, error) {
-	err := data.GetDB().Debug().WithContext(ctx).Create(g).Error
+	err := data.GetDB().WithContext(ctx).Create(g).Error
 	return g, err
 }
 
@@ -45,14 +45,12 @@ func (r *quotaRepo) Save(ctx context.Context, data *biz.Data, g *biz.Quota) (*bi
 //	@return *biz.Quota
 //	@return error
 func (r *quotaRepo) Update(ctx context.Context, data *biz.Data, g *biz.Quota) (*biz.Quota, error) {
-	//err := db.Debug().Update(g).Error
-	//return g, err
 	return nil, nil
 }
 
 func (r *quotaRepo) FindByGoodsID(ctx context.Context, data *biz.Data, goodsID int64) (*biz.Quota, error) {
 	var quota = new(biz.Quota)
-	err := data.GetDB().Debug().WithContext(ctx).
+	err := data.GetDB().WithContext(ctx).
 		Where("goods_id = ?", goodsID).
 		First(quota).Error
 	return quota, err

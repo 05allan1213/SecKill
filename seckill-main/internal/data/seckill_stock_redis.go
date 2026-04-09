@@ -49,6 +49,7 @@ func (r *preSecKillStockRepo) PreDescStock(ctx context.Context, data *biz.Data,
 	secRecord, err := json.Marshal(record)
 	if err != nil {
 		log.ErrorContextf(ctx, "json marshal err ", err)
+		return secNum, fmt.Errorf("marshal pre seckill record failed: %w", err)
 	}
 	log.InfoContextf(ctx, "secNum is %s, secRecord is %s",
 		secNum, string(secRecord))
@@ -80,6 +81,7 @@ func (r *preSecKillStockRepo) SetSuccessInPreSecKill(ctx context.Context, data *
 	secRecord, err := json.Marshal(record)
 	if err != nil {
 		log.ErrorContextf(ctx, "json marshal err ", err)
+		return secNum, fmt.Errorf("marshal pre seckill record failed: %w", err)
 	}
 	log.InfoContextf(ctx, "secNum is %s, secRecord is %s",
 		secNum, string(secRecord))
@@ -166,7 +168,7 @@ end
 --2.判断这个用户是不是已经超过限额了
 local limit = redis.call('get', keyLimit)
 local userSecKilledNum  = redis.call('get', keyUserSecKilledNum)
-if limit and userSecKilledNum and tonumber(userSecKilledNum) + tonumber(num) > tonumber(limit) then 
+if limit and userSecKilledNum and tonumber(userSecKilledNum) + tonumber(KEYS[3]) > tonumber(limit) then 
    retAry[1] = -2
    return retAry
 end
@@ -189,8 +191,8 @@ return retAry
 
 var userRebackStockLua = `
 -- key1：用户id，key2：商品id key3：抢购多少个 key4：秒杀单号, keys5:秒杀记录
--- keyLimit是 skl:goodsID
-local keyLimit = "skl:" .. KEYS[2]
+-- keyLimit是 SK:Limit:goodsID
+local keyLimit = "SK:Limit" .. KEYS[2]
 -- keyUserGoodsSecNum 是 SK:UserGoodsSecNum:goodsID:userID
 local keyUserGoodsSecNum = "SK:UserGoodsSecNum:" .. KEYS[1] .. ":" .. KEYS[2]
 -- keyUserSecKilledNum 是SK:UserSecKilledNum:userID:goodsID
@@ -209,7 +211,7 @@ end
 --2.判断这个用户是不是已经超过限额了
 local limit = redis.call('get', keyLimit)
 local userSecKilledNum  = redis.call('get', keyUserSecKilledNum)
-if limit and userSecKilledNum and tonumber(userSecKilledNum) + tonumber(num) > tonumber(limit) then 
+if limit and userSecKilledNum and tonumber(userSecKilledNum) + tonumber(KEYS[3]) > tonumber(limit) then 
    retAry[1] = -2
    return retAry
 end
@@ -232,12 +234,8 @@ return retAry
 
 var setSecKillSuccessLua = `
 -- key1：用户id，key2：商品id key3：秒杀单号, keys4:秒杀记录
--- keyLimit是 skl:goodsID
-local keyLimit = "skl:" .. KEYS[2]
 -- keyUserGoodsSecNum 是 SK:UserGoodsSecNum:goodsID:userID
 local keyUserGoodsSecNum = "SK:UserGoodsSecNum:" .. KEYS[1] .. ":" .. KEYS[2]
--- keyUserSecKilledNum 是SK:UserSecKilledNum:userID:goodsID
-local keyUserSecKilledNum = "SK:UserSecKilledNum:" .. KEYS[1] .. ":" .. KEYS[2]
 local retAry = {0, ""}
 redis.call('set', keyUserGoodsSecNum, "") 
 redis.call('set', KEYS[3], KEYS[4]) 

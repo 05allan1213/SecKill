@@ -35,7 +35,7 @@ func NewGoodsRepo(data *Data) biz.GoodsRepo {
 //	@return *biz.Goods
 //	@return error
 func (r *goodsRepo) Save(ctx context.Context, data *biz.Data, g *biz.Goods) (*biz.Goods, error) {
-	err := data.GetDB().Debug().WithContext(ctx).Create(g).Error
+	err := data.GetDB().WithContext(ctx).Create(g).Error
 	return g, err
 }
 
@@ -50,8 +50,6 @@ func (r *goodsRepo) Save(ctx context.Context, data *biz.Data, g *biz.Goods) (*bi
 //	@return *biz.Goods
 //	@return error
 func (r *goodsRepo) Update(ctx context.Context, data *biz.Data, g *biz.Goods) (*biz.Goods, error) {
-	//err := db.Debug().Update(g).Error
-	//return g, err
 	return nil, nil
 }
 
@@ -102,7 +100,7 @@ func (r *goodsRepo) FindByIDWithCache(ctx context.Context, data *biz.Data,
 //	@return error
 func (r *goodsRepo) FindByID(ctx context.Context, data *biz.Data, goodsID int64) (*biz.Goods, error) {
 	var goods biz.Goods
-	err := data.GetDB().Debug().WithContext(ctx).Where("id = ?", goodsID).First(&goods).Error
+	err := data.GetDB().WithContext(ctx).Where("id = ?", goodsID).First(&goods).Error
 	if err != nil {
 		return nil, err
 	}
@@ -111,24 +109,11 @@ func (r *goodsRepo) FindByID(ctx context.Context, data *biz.Data, goodsID int64)
 
 func (r *goodsRepo) FindByNum(ctx context.Context, data *biz.Data, goodsNum string) (*biz.Goods, error) {
 	var goods biz.Goods
-	fmt.Println("data is before")
-	fmt.Printf("db is %s\n", GetJsonFmtStr(data.GetDB()))
-	fmt.Println("goodsNum ", goodsNum)
-	err := data.GetDB().Debug().WithContext(ctx).Where("goods_num = ?", goodsNum).First(&goods).Error
+	err := data.GetDB().WithContext(ctx).Where("goods_num = ?", goodsNum).First(&goods).Error
 	if err != nil {
 		return nil, err
 	}
 	return &goods, nil
-}
-
-// GetJsonFmtStr func
-func GetJsonFmtStr(data interface{}) string {
-	resp, _ := json.Marshal(data)
-	respStr := string(resp)
-	if respStr == "" {
-		respStr = fmt.Sprintf("%+v", data)
-	}
-	return respStr
 }
 
 // ListAll
@@ -143,7 +128,7 @@ func GetJsonFmtStr(data interface{}) string {
 func (r *goodsRepo) GetGoodsList(ctx context.Context, data *biz.Data, offset int, limit int) ([]*biz.Goods, error) {
 
 	goodsList := make([]*biz.Goods, 0)
-	err := data.GetDB().Debug().WithContext(ctx).
+	err := data.GetDB().WithContext(ctx).
 		Offset(offset).
 		Limit(limit).
 		Find(&goodsList).Error

@@ -35,7 +35,7 @@ func NewSecKillRecordRepo(data *Data) biz.SecKillRecordRepo {
 //	@return *biz.SecKillRecord
 //	@return error
 func (r *secKillRecordRepo) Save(ctx context.Context, data *biz.Data, g *biz.SecKillRecord) (*biz.SecKillRecord, error) {
-	err := data.GetDB().Debug().WithContext(ctx).Create(g).Error
+	err := data.GetDB().WithContext(ctx).Create(g).Error
 	return g, err
 }
 
@@ -50,8 +50,6 @@ func (r *secKillRecordRepo) Save(ctx context.Context, data *biz.Data, g *biz.Sec
 //	@return *biz.SecKillRecord
 //	@return error
 func (r *secKillRecordRepo) Update(ctx context.Context, data *biz.Data, g *biz.SecKillRecord) (*biz.SecKillRecord, error) {
-	//err := db.Debug().Update(g).Error
-	//return g, err
 	return nil, nil
 }
 
@@ -102,7 +100,7 @@ func (r *secKillRecordRepo) FindByIDWithCache(ctx context.Context, data *biz.Dat
 //	@return error
 func (r *secKillRecordRepo) FindByID(ctx context.Context, data *biz.Data, secKillID int64) (*biz.SecKillRecord, error) {
 	var secKill biz.SecKillRecord
-	err := data.GetDB().Debug().WithContext(ctx).Where("id = ?", secKillID).First(&secKill).Error
+	err := data.GetDB().WithContext(ctx).Where("id = ?", secKillID).First(&secKill).Error
 	if err != nil {
 		return nil, err
 	}

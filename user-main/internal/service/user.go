@@ -4,12 +4,12 @@ import (
 	"context"
 	pb "github.com/BitofferHub/user/api/user/v1"
 	"github.com/BitofferHub/user/internal/biz"
-	"github.com/BitofferHub/user/internal/data"
 )
 
 type UserService struct {
 	pb.UnimplementedUserServer
-	uc *biz.UserUsecase
+	uc   *biz.UserUsecase
+	data *biz.Data
 }
 
 // NewUserService
@@ -18,8 +18,8 @@ type UserService struct {
 //	@Description:
 //	@param uc
 //	@return *UserService
-func NewUserService(uc *biz.UserUsecase) *UserService {
-	return &UserService{uc: uc}
+func NewUserService(data *biz.Data, uc *biz.UserUsecase) *UserService {
+	return &UserService{uc: uc, data: data}
 }
 
 // CreateUser
@@ -32,8 +32,7 @@ func NewUserService(uc *biz.UserUsecase) *UserService {
 //	@return *pb.CreateUserReply
 //	@return error
 func (s *UserService) CreateUser(ctx context.Context, req *pb.CreateUserRequest) (*pb.CreateUserReply, error) {
-	dt := biz.NewData(data.GetData().GetDB(), data.GetData().GetCache())
-	_, err := s.uc.CreateUser(ctx, dt, &biz.User{
+	_, err := s.uc.CreateUser(ctx, s.data, &biz.User{
 		UserName: req.UserName,
 		Pwd:      req.Pwd,
 		Sex:      int(req.Sex),
@@ -75,8 +74,7 @@ func (s *UserService) DeleteUser(ctx context.Context, req *pb.DeleteUserRequest)
 //	@return *pb.GetUserReply
 //	@return error
 func (s *UserService) GetUser(ctx context.Context, req *pb.GetUserRequest) (*pb.GetUserReply, error) {
-	dt := biz.NewData(data.GetData().GetDB(), data.GetData().GetCache())
-	userInfo, err := s.uc.GetUserInfo(ctx, dt, req.UserID)
+	userInfo, err := s.uc.GetUserInfo(ctx, s.data, req.UserID)
 	if err != nil {
 		return nil, err
 	}
@@ -106,8 +104,7 @@ func (s *UserService) GetUser(ctx context.Context, req *pb.GetUserRequest) (*pb.
 //	@return *pb.GetUserByNameReply
 //	@return error
 func (s *UserService) GetUserByName(ctx context.Context, req *pb.GetUserByNameRequest) (*pb.GetUserByNameReply, error) {
-	dt := biz.NewData(data.GetData().GetDB(), data.GetData().GetCache())
-	userInfo, err := s.uc.GetUserInfoByName(ctx, dt, req.UserName)
+	userInfo, err := s.uc.GetUserInfoByName(ctx, s.data, req.UserName)
 	if err != nil {
 		return nil, err
 	}

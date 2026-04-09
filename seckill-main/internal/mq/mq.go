@@ -1,12 +1,14 @@
 package mq
 
+import "context"
+
 type Producer interface {
-	SendMessage(message []byte) error
+	SendMessage(ctx context.Context, message []byte) error
 	Close()
 }
 
 type Consumer interface {
-	ConsumeMessages(handler func([]byte) error)
+	ConsumeMessages(ctx context.Context, handler func(context.Context, []byte) error)
 	Close()
 }
 

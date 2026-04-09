@@ -36,7 +36,7 @@ func NewSecKillStockRepo(data *Data) biz.SecKillStockRepo {
 //	@return *biz.SecKillStock
 //	@return error
 func (r *secKillStockRepo) Save(ctx context.Context, data *biz.Data, g *biz.SecKillStock) (*biz.SecKillStock, error) {
-	err := data.GetDB().Debug().WithContext(ctx).Create(g).Error
+	err := data.GetDB().WithContext(ctx).Create(g).Error
 	return g, err
 }
 
@@ -51,8 +51,6 @@ func (r *secKillStockRepo) Save(ctx context.Context, data *biz.Data, g *biz.SecK
 //	@return *biz.SecKillStock
 //	@return error
 func (r *secKillStockRepo) Update(ctx context.Context, data *biz.Data, g *biz.SecKillStock) (*biz.SecKillStock, error) {
-	//err := db.Debug().Update(g).Error
-	//return g, err
 	return nil, nil
 }
 
@@ -103,7 +101,7 @@ func (r *secKillStockRepo) FindByIDWithCache(ctx context.Context, data *biz.Data
 //	@return error
 func (r *secKillStockRepo) FindByID(ctx context.Context, data *biz.Data, secKillID int64) (*biz.SecKillStock, error) {
 	var secKill biz.SecKillStock
-	err := data.GetDB().Debug().WithContext(ctx).Where("id = ?", secKillID).First(&secKill).Error
+	err := data.GetDB().WithContext(ctx).Where("id = ?", secKillID).First(&secKill).Error
 	if err != nil {
 		return nil, err
 	}
@@ -113,7 +111,7 @@ func (r *secKillStockRepo) FindByID(ctx context.Context, data *biz.Data, secKill
 func (r *secKillStockRepo) DescStock(ctx context.Context, data *biz.Data, goodsID int64, num int32) (int64, error) {
 	var stock biz.SecKillStock
 	db := data.GetDB()
-	db = db.Debug().WithContext(ctx).Table(stock.TableName()).
+	db = db.WithContext(ctx).Table(stock.TableName()).
 		Where("goods_id = ? and stock >= ?", goodsID, num).
 		Update("stock", gorm.Expr("stock - ?", num))
 	err := db.Error

@@ -1,6 +1,8 @@
 package biz
 
 import (
+	"context"
+
 	"github.com/BitofferHub/pkg/middlewares/cache"
 	"gorm.io/gorm"
 )
@@ -44,4 +46,23 @@ func (p *Data) GetDB() *gorm.DB {
 //	@return *cache.Client
 func (p *Data) GetCache() *cache.Client {
 	return p.rdb
+}
+
+func (p *Data) CloneWithDB(db *gorm.DB) *Data {
+	if db == nil {
+		db = p.db
+	}
+	return &Data{
+		db:  db,
+		rdb: p.rdb,
+	}
+}
+
+func (p *Data) RunInTx(ctx context.Context, fn func(txData *Data) error) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	return p.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		return fn(p.CloneWithDB(tx))
+	})
 }

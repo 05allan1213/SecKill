@@ -2,6 +2,7 @@ package mq
 
 import (
 	"context"
+	"errors"
 
 	"github.com/BitofferHub/seckill/internal/log"
 	"github.com/segmentio/kafka-go"
@@ -11,8 +12,11 @@ type KafkaProducer struct {
 	writer *kafka.Writer
 }
 
-func (kp *KafkaProducer) SendMessage(message []byte) error {
-	return kp.writer.WriteMessages(context.Background(), kafka.Message{
+func (kp *KafkaProducer) SendMessage(ctx context.Context, message []byte) error {
+	if ctx == nil {
+		return errors.New("nil context")
+	}
+	return kp.writer.WriteMessages(ctx, kafka.Message{
 		Value: message,
 	})
 }

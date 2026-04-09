@@ -35,7 +35,7 @@ func NewUserRepo(data *Data) biz.UserRepo {
 //	@return *biz.User
 //	@return error
 func (r *userRepo) Save(ctx context.Context, data *biz.Data, g *biz.User) (*biz.User, error) {
-	err := data.GetDB().Debug().Create(g).Error
+	err := data.GetDB().WithContext(ctx).Create(g).Error
 	return g, err
 }
 
@@ -50,8 +50,6 @@ func (r *userRepo) Save(ctx context.Context, data *biz.Data, g *biz.User) (*biz.
 //	@return *biz.User
 //	@return error
 func (r *userRepo) Update(ctx context.Context, data *biz.Data, g *biz.User) (*biz.User, error) {
-	//err := db.Debug().Update(g).Error
-	//return g, err
 	return nil, nil
 }
 
@@ -102,7 +100,7 @@ func (r *userRepo) FindByIDWithCache(ctx context.Context, data *biz.Data,
 //	@return error
 func (r *userRepo) FindByID(ctx context.Context, data *biz.Data, userID int64) (*biz.User, error) {
 	var user biz.User
-	err := data.GetDB().Debug().Where("id = ?", userID).First(&user).Error
+	err := data.GetDB().WithContext(ctx).Where("id = ?", userID).First(&user).Error
 	if err != nil {
 		return nil, err
 	}
@@ -121,7 +119,7 @@ func (r *userRepo) FindByID(ctx context.Context, data *biz.Data, userID int64) (
 //	@return error
 func (r *userRepo) FindByName(ctx context.Context, data *biz.Data, userName string) (*biz.User, error) {
 	var user biz.User
-	err := data.GetDB().Debug().Where("user_name = ?", userName).First(&user).Error
+	err := data.GetDB().WithContext(ctx).Where("user_name = ?", userName).First(&user).Error
 	if err != nil {
 		return nil, err
 	}

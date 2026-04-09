@@ -35,7 +35,7 @@ func NewOrderRepo(data *Data) biz.OrderRepo {
 //	@return *biz.Order
 //	@return error
 func (r *orderRepo) Save(ctx context.Context, data *biz.Data, g *biz.Order) (*biz.Order, error) {
-	err := data.GetDB().Debug().WithContext(ctx).Create(g).Error
+	err := data.GetDB().WithContext(ctx).Create(g).Error
 	return g, err
 }
 
@@ -50,8 +50,6 @@ func (r *orderRepo) Save(ctx context.Context, data *biz.Data, g *biz.Order) (*bi
 //	@return *biz.Order
 //	@return error
 func (r *orderRepo) Update(ctx context.Context, data *biz.Data, g *biz.Order) (*biz.Order, error) {
-	//err := db.Debug().Update(g).Error
-	//return g, err
 	return nil, nil
 }
 
@@ -102,7 +100,7 @@ func (r *orderRepo) FindByIDWithCache(ctx context.Context, data *biz.Data,
 //	@return error
 func (r *orderRepo) FindByID(ctx context.Context, data *biz.Data, orderID int64) (*biz.Order, error) {
 	var order biz.Order
-	err := data.GetDB().Debug().WithContext(ctx).Where("id = ?", orderID).First(&order).Error
+	err := data.GetDB().WithContext(ctx).Where("id = ?", orderID).First(&order).Error
 	if err != nil {
 		return nil, err
 	}
@@ -111,7 +109,7 @@ func (r *orderRepo) FindByID(ctx context.Context, data *biz.Data, orderID int64)
 
 func (r *orderRepo) FindByNum(ctx context.Context, data *biz.Data, orderNum int64) (*biz.Order, error) {
 	var order biz.Order
-	err := data.GetDB().Debug().WithContext(ctx).Where("order_num = ?", orderNum).First(&order).Error
+	err := data.GetDB().WithContext(ctx).Where("order_num = ?", orderNum).First(&order).Error
 	if err != nil {
 		return nil, err
 	}

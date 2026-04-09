@@ -27,9 +27,13 @@ func newManagedKafkaConsumer(conf config.KafkaConsumerConf) mq.Consumer {
 	return &managedKafkaConsumer{reader: reader}
 }
 
-func (c *managedKafkaConsumer) ConsumeMessages(handler func([]byte) error) {
+func (c *managedKafkaConsumer) ConsumeMessages(ctx context.Context, handler func(context.Context, []byte) error) {
+	if ctx == nil {
+		log.Errorf("Error consuming message: nil context")
+		return
+	}
 	for {
-		message, err := c.reader.FetchMessage(context.Background())
+		message, err := c.reader.FetchMessage(ctx)
 		if err != nil {
 			if c.closed.Load() {
 				return
@@ -38,11 +42,11 @@ func (c *managedKafkaConsumer) ConsumeMessages(handler func([]byte) error) {
 			continue
 		}
 
-		if err := handler(message.Value); err != nil {
+		if err := handler(ctx, message.Value); err != nil {
 			log.Errorf("Error handling message: %v", err)
 		}
 
-		if err := c.reader.CommitMessages(context.Background(), message); err != nil {
+		if err := c.reader.CommitMessages(ctx, message); err != nil {
 			if c.closed.Load() {
 				return
 			}

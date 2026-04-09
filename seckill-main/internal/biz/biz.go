@@ -1,6 +1,8 @@
 package biz
 
 import (
+	"context"
+
 	"github.com/BitofferHub/pkg/middlewares/cache"
 	"github.com/BitofferHub/seckill/internal/mq"
 	"gorm.io/gorm"
@@ -57,4 +59,25 @@ func (p *Data) GetMQProducer() mq.Producer {
 
 func (p *Data) GetMQConsumer() mq.Consumer {
 	return p.mqConsumer
+}
+
+func (p *Data) CloneWithDB(db *gorm.DB) *Data {
+	if db == nil {
+		db = p.db
+	}
+	return &Data{
+		db:         db,
+		rdb:        p.rdb,
+		mqProducer: p.mqProducer,
+		mqConsumer: p.mqConsumer,
+	}
+}
+
+func (p *Data) RunInTx(ctx context.Context, fn func(txData *Data) error) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	return p.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		return fn(p.CloneWithDB(tx))
+	})
 }

@@ -2,21 +2,20 @@ package service
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/BitofferHub/pkg/constant"
 	"github.com/BitofferHub/seckill/internal/biz"
-	"github.com/BitofferHub/seckill/internal/data"
 	"github.com/BitofferHub/seckill/internal/log"
 )
 
 func (s *SecKillService) HandleConsumedMessage(ctx context.Context, message []byte) error {
 	if ctx == nil {
-		ctx = context.Background()
+		return errors.New("nil consume context")
 	}
 
-	dt := biz.NewData(data.GetData().GetDB(), data.GetData().GetCache(), data.GetData().GetMQProducer(), data.GetData().GetMQConsumer())
-	skMsg, err := s.msgUc.UnmarshalSecKillMsg(ctx, dt, message)
+	skMsg, err := s.msgUc.UnmarshalSecKillMsg(ctx, s.data, message)
 	if err != nil {
 		log.ErrorContextf(ctx, "UnmarshalSecKillMsg err %s", err.Error())
 		return err
@@ -31,7 +30,7 @@ func (s *SecKillService) HandleConsumedMessage(ctx context.Context, message []by
 		log.ErrorContextf(ctx, "secKillInStore err %s", err.Error())
 		return err
 	}
-	record, err := s.preStockUc.GetSecKillInfo(ctx, dt, skMsg.SecNum)
+	record, err := s.preStockUc.GetSecKillInfo(ctx, s.data, skMsg.SecNum)
 	if err != nil {
 		log.ErrorContextf(ctx, "GetSecKillInfo err %s", err.Error())
 		return err
@@ -39,6 +38,9 @@ func (s *SecKillService) HandleConsumedMessage(ctx context.Context, message []by
 	record.OrderNum = orderNum
 	record.Status = int(biz.SK_STATUS_BEFORE_PAY)
 	record.ModifyTime = time.Now()
-	s.preStockUc.SetSuccessInPreSecKill(ctx, dt, skMsg.UserID, skMsg.Goods.ID, skMsg.SecNum, record)
+	if _, err := s.preStockUc.SetSuccessInPreSecKill(ctx, s.data, skMsg.UserID, skMsg.Goods.ID, skMsg.SecNum, record); err != nil {
+		log.ErrorContextf(ctx, "SetSuccessInPreSecKill err %s", err.Error())
+		return err
+	}
 	return nil
 }

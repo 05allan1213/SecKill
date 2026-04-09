@@ -27,6 +27,7 @@ func main() {
 
 	var c config.Config
 	conf.MustLoad(*configFile, &c)
+	config.ApplyEnvOverrides(&c)
 
 	svcCtx := svc.NewServiceContext(c)
 	defer svcCtx.Data.Close()

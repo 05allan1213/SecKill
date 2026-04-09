@@ -13,6 +13,8 @@ type ConsumerRunner struct {
 	svcCtx *svc.ServiceContext
 	done   chan struct{}
 	once   sync.Once
+	ctx    context.Context
+	cancel context.CancelFunc
 }
 
 func NewConsumerRunner(svcCtx *svc.ServiceContext) *ConsumerRunner {
@@ -21,6 +23,7 @@ func NewConsumerRunner(svcCtx *svc.ServiceContext) *ConsumerRunner {
 
 func (r *ConsumerRunner) Start() error {
 	r.done = make(chan struct{})
+	r.ctx, r.cancel = context.WithCancel(context.Background())
 	go func() {
 		defer close(r.done)
 		defer func() {
@@ -33,8 +36,8 @@ func (r *ConsumerRunner) Start() error {
 		if consumer == nil {
 			return
 		}
-		consumer.ConsumeMessages(func(message []byte) error {
-			return r.svcCtx.SecKillService.HandleConsumedMessage(context.Background(), message)
+		consumer.ConsumeMessages(r.ctx, func(ctx context.Context, message []byte) error {
+			return r.svcCtx.SecKillService.HandleConsumedMessage(ctx, message)
 		})
 	}()
 
@@ -43,6 +46,9 @@ func (r *ConsumerRunner) Start() error {
 
 func (r *ConsumerRunner) Stop(ctx context.Context) error {
 	r.once.Do(func() {
+		if r.cancel != nil {
+			r.cancel()
+		}
 		if r.svcCtx != nil && r.svcCtx.Data != nil && r.svcCtx.Data.GetMQConsumer() != nil {
 			r.svcCtx.Data.GetMQConsumer().Close()
 		}

@@ -11,6 +11,7 @@ import (
 type ServiceContext struct {
 	Config         config.Config
 	Data           *data.Data
+	BizData        *biz.Data
 	SecKillService *service.SecKillService
 }
 
@@ -21,6 +22,7 @@ func NewServiceContext(c config.Config) *ServiceContext {
 	if err != nil {
 		panic(err)
 	}
+	bizData := biz.NewData(dataLayer.GetDB(), dataLayer.GetCache(), dataLayer.GetMQProducer(), dataLayer.GetMQConsumer())
 
 	stockRepo := data.NewSecKillStockRepo(dataLayer)
 	preStockRepo := data.NewPreSecKillStockRepo(dataLayer)
@@ -41,6 +43,7 @@ func NewServiceContext(c config.Config) *ServiceContext {
 	userQuotaUsecase := biz.NewUserQuotaUsecase(userQuotaRepo)
 
 	seckillService := service.NewSecKillService(
+		bizData,
 		stockUsecase,
 		preStockUsecase,
 		recordUsecase,
@@ -54,6 +57,7 @@ func NewServiceContext(c config.Config) *ServiceContext {
 	return &ServiceContext{
 		Config:         c,
 		Data:           dataLayer,
+		BizData:        bizData,
 		SecKillService: seckillService,
 	}
 }

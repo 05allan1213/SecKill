@@ -11,6 +11,7 @@ import (
 type ServiceContext struct {
 	Config      config.Config
 	Data        *data.Data
+	BizData     *biz.Data
 	UserService *service.UserService
 }
 
@@ -21,13 +22,15 @@ func NewServiceContext(c config.Config) *ServiceContext {
 	if err != nil {
 		panic(err)
 	}
+	bizData := biz.NewData(dataLayer.GetDB(), dataLayer.GetCache())
 	userRepo := data.NewUserRepo(dataLayer)
 	userUsecase := biz.NewUserUsecase(userRepo)
-	userService := service.NewUserService(userUsecase)
+	userService := service.NewUserService(bizData, userUsecase)
 
 	return &ServiceContext{
 		Config:      c,
 		Data:        dataLayer,
+		BizData:     bizData,
 		UserService: userService,
 	}
 }
