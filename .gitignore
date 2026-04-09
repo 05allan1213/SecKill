@@ -39,3 +39,4 @@ wrkbench/
 third_party/
 
 *.md
+.codex

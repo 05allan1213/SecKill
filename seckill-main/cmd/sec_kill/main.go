@@ -1,79 +1,74 @@
 package main
 
 import (
+	"context"
 	"flag"
-	"github.com/BitofferHub/pkg/middlewares/discovery"
-	"github.com/go-kratos/kratos/v2"
-	"os"
+	"fmt"
+	"time"
 
-	"github.com/BitofferHub/seckill/internal/conf"
+	pb "github.com/BitofferHub/seckill/api/sec_kill/proto"
+	"github.com/BitofferHub/seckill/internal/config"
+	seckillserver "github.com/BitofferHub/seckill/internal/server/seckill"
+	"github.com/BitofferHub/seckill/internal/svc"
 
-	"github.com/go-kratos/kratos/v2/config"
-	"github.com/go-kratos/kratos/v2/config/file"
-	"github.com/go-kratos/kratos/v2/transport/grpc"
-	"github.com/go-kratos/kratos/v2/transport/http"
+	"github.com/zeromicro/go-zero/core/conf"
+	"github.com/zeromicro/go-zero/core/logx"
+	"github.com/zeromicro/go-zero/core/service"
+	"github.com/zeromicro/go-zero/zrpc"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
 
 	_ "go.uber.org/automaxprocs"
 )
 
-// go build -ldflags "-X main.Version=x.y.z"
-var (
-	// Name is the name of the compiled software.
-	Name string = "sec_kill-svr"
-	// Version is the version of the compiled software.
-	Version string
-	// flagconf is the config flag.
-	flagconf string
-
-	id, _ = os.Hostname()
-)
-
-func init() {
-	flag.StringVar(&flagconf, "conf", "../../configs", "config path, eg: -conf config.yaml")
-}
-
-func newApp(confMicro *conf.Micro, gs *grpc.Server, hs *http.Server) *kratos.App {
-	// new reg with etcd client
-	reg := discovery.GetRegistrar()
-	return kratos.New(
-		kratos.ID(id),
-		kratos.Name(Name),
-		kratos.Version(Version),
-		kratos.Metadata(map[string]string{}),
-		kratos.Server(
-			gs,
-			hs,
-		),
-		kratos.Registrar(reg.Reg),
-	)
-}
+var configFile = flag.String("f", "etc/seckill.yaml", "the config file")
 
 func main() {
 	flag.Parse()
-	c := config.New(
-		config.WithSource(
-			file.NewSource(flagconf),
-		),
-	)
-	defer c.Close()
 
-	if err := c.Load(); err != nil {
-		panic(err)
-	}
+	var c config.Config
+	conf.MustLoad(*configFile, &c)
 
-	var bc conf.Bootstrap
-	if err := c.Scan(&bc); err != nil {
-		panic(err)
-	}
+	svcCtx := svc.NewServiceContext(c)
+	defer svcCtx.Data.Close()
 
-	app, cleanup, err := buildApp(bc)
+	compatHTTP, err := StartCompatHTTPServer(c, svcCtx)
 	if err != nil {
 		panic(err)
 	}
-	defer cleanup()
+	defer func() {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = compatHTTP.Shutdown(shutdownCtx)
+	}()
 
-	// start and wait for stop signal
-	if err := app.Run(); err != nil {
+	cleanupCompat, err := RegisterCompatServices(c)
+	if err != nil {
 		panic(err)
 	}
+	defer cleanupCompat()
+
+	consumerRunner := NewConsumerRunner(svcCtx)
+	if err := consumerRunner.Start(); err != nil {
+		panic(err)
+	}
+	defer func() {
+		stopCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = consumerRunner.Stop(stopCtx)
+	}()
+
+	s := zrpc.MustNewServer(c.RpcServerConf, func(grpcServer *grpc.Server) {
+		pb.RegisterSecKillServer(grpcServer, seckillserver.NewSecKillServer(svcCtx))
+
+		if c.Mode == service.DevMode || c.Mode == service.TestMode {
+			reflection.Register(grpcServer)
+		}
+	})
+	s.AddUnaryInterceptors(NewTraceIDInterceptor(), NewAccessLogInterceptor())
+	defer s.Stop()
+
+	fmt.Printf("Starting seckill rpc server at %s...\n", c.ListenOn)
+	logx.Infof("compatibility http server listening on %s", c.CompatHttp.Addr)
+	s.Start()
 }

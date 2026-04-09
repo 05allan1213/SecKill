@@ -1,0 +1,33 @@
+Name: seckill.rpc
+ListenOn: 0.0.0.0:8002
+Etcd:
+  Hosts:
+    - 127.0.0.1:20001
+  Key: seckill.rpc
+CompatHttp:
+  Addr: 0.0.0.0:8001
+Data:
+  Database:
+    Addr: 127.0.0.1:3306
+    User: root
+    Password: niuge
+    DataBase: bitstorm
+    MaxIdleConn: 2000
+    MaxOpenConn: 20000
+    MaxIdleTime: 30
+  Redis:
+    Addr: 127.0.0.1:6379
+    Db: 0
+    PassWord: niuge
+    PoolSize: 100
+  Kafka:
+    Producer:
+      Brokers:
+        - 127.0.0.1:9092
+      Topic: seckill
+      Ack: 0
+    Consumer:
+      Brokers:
+        - 127.0.0.1:9092
+      Topic: seckill
+      Offset: 0

@@ -1,13 +1,13 @@
 package data
 
 import (
-	"fmt"
 	"github.com/BitofferHub/pkg/middlewares/cache"
 	"github.com/BitofferHub/pkg/middlewares/gormcli"
 	"github.com/BitofferHub/pkg/middlewares/mq"
-	"github.com/BitofferHub/seckill/internal/conf"
+	cfg "github.com/BitofferHub/seckill/internal/config"
 	_ "github.com/go-sql-driver/mysql"
 	"gorm.io/gorm"
+	"sync"
 )
 
 // Data .
@@ -16,6 +16,7 @@ type Data struct {
 	rdb        *cache.Client
 	mqProducer mq.Producer
 	mqConsumer mq.Consumer
+	closeOnce  sync.Once
 }
 
 var data *Data
@@ -39,50 +40,45 @@ func (p *Data) GetMQConsumer() mq.Consumer {
 	return p.mqConsumer
 }
 
-// NewData
-//
-//	@Author <a href="https://bitoffer.cn">狂飙训练营</a>
-//	@Description:
-//	@param dt
-//	@return *Data
-//	@return error
-func NewData(dt *conf.Data) (*Data, error) {
-	fmt.Printf("conf is %+v\n", dt)
+func (p *Data) Close() {
+	p.closeOnce.Do(func() {
+		if p.mqConsumer != nil {
+			p.mqConsumer.Close()
+		}
+		if p.mqProducer != nil {
+			p.mqProducer.Close()
+		}
+	})
+}
+
+func NewDataFromConfig(dt cfg.DataConf) (*Data, error) {
 	gormcli.Init(
-		gormcli.WithAddr(dt.GetDatabase().GetAddr()),
-		gormcli.WithUser(dt.GetDatabase().GetUser()),
-		gormcli.WithPassword(dt.GetDatabase().GetPassword()),
-		gormcli.WithDataBase(dt.GetDatabase().GetDataBase()),
-		gormcli.WithMaxIdleConn(int(dt.GetDatabase().GetMaxIdleConn())),
-		gormcli.WithMaxOpenConn(int(dt.GetDatabase().GetMaxOpenConn())),
-		gormcli.WithMaxIdleTime(int64(dt.GetDatabase().GetMaxIdleTime())),
+		gormcli.WithAddr(dt.Database.Addr),
+		gormcli.WithUser(dt.Database.User),
+		gormcli.WithPassword(dt.Database.Password),
+		gormcli.WithDataBase(dt.Database.DataBase),
+		gormcli.WithMaxIdleConn(int(dt.Database.MaxIdleConn)),
+		gormcli.WithMaxOpenConn(int(dt.Database.MaxOpenConn)),
+		gormcli.WithMaxIdleTime(int64(dt.Database.MaxIdleTime)),
 		gormcli.WithSlowThresholdMillisecond(10),
 	)
 	cache.Init(
-		cache.WithAddr(dt.GetRedis().Addr),
-		cache.WithPassWord(dt.GetRedis().PassWord),
-		cache.WithDB(int(dt.GetRedis().Db)),
-		cache.WithPoolSize(int(dt.GetRedis().PoolSize)))
+		cache.WithAddr(dt.Redis.Addr),
+		cache.WithPassWord(dt.Redis.PassWord),
+		cache.WithDB(int(dt.Redis.Db)),
+		cache.WithPoolSize(int(dt.Redis.PoolSize)),
+	)
 	producer := mq.NewKafkaProducer(
-		mq.WithBrokers(dt.GetKafka().GetProducer().Brokers),
-		mq.WithTopic(dt.GetKafka().GetProducer().Topic),
-		mq.WithAck(int8(dt.GetKafka().GetProducer().Ack)),
-		mq.WithAsync())
+		mq.WithBrokers(dt.Kafka.Producer.Brokers),
+		mq.WithTopic(dt.Kafka.Producer.Topic),
+		mq.WithAck(dt.Kafka.Producer.Ack),
+		mq.WithAsync(),
+	)
 	if producer == nil {
 		panic("nil producer")
 	}
-	consumer := mq.NewKafkaConsumer(
-		mq.WithBrokers(dt.GetKafka().GetConsumer().Brokers),
-		mq.WithTopic(dt.GetKafka().GetConsumer().Topic),
-		mq.WithOffset(dt.GetKafka().GetConsumer().Offset))
-	if consumer == nil {
-		panic("nil consumer")
-	}
-	fmt.Println("producer ", producer)
+	consumer := newManagedKafkaConsumer(dt.Kafka.Consumer)
 	dta := &Data{db: gormcli.GetDB(), rdb: cache.GetRedisCli(), mqProducer: producer, mqConsumer: consumer}
 	data = dta
-	fmt.Println("producer 2", data.GetMQProducer())
-	fmt.Printf("data is %+v\n", data)
-	fmt.Printf("data db is %+v\n", data.GetDB())
 	return dta, nil
 }
