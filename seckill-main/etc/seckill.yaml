@@ -1,14 +1,14 @@
 Name: seckill.rpc
-ListenOn: 0.0.0.0:8002
+ListenOn: 127.0.0.1:8002
 Etcd:
   Hosts:
     - 127.0.0.1:20001
   Key: seckill.rpc
 Data:
   Database:
-    Addr: 127.0.0.1:3306
+    Addr: 127.0.0.1:3307
     User: root
-    Password: niuge
+    Password: "123456"
     DataBase: bitstorm
     MaxIdleConn: 2000
     MaxOpenConn: 20000
@@ -16,7 +16,7 @@ Data:
   Redis:
     Addr: 127.0.0.1:6379
     Db: 0
-    PassWord: niuge
+    PassWord: "123456"
     PoolSize: 100
   Kafka:
     Producer:

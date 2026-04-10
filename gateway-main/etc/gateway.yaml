@@ -20,7 +20,7 @@ Auth:
   Timeout: 1h
 
 Redis:
-  Addr: 192.168.5.52:6379
+  Addr: 127.0.0.1:6379
   DB: 8
   passWord: "123456"
   read_timeout: 2s

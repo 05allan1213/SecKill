@@ -1,12 +1,12 @@
 Name: user.rpc
-ListenOn: 0.0.0.0:8669
+ListenOn: 127.0.0.1:8669
 Etcd:
   Hosts:
-    - 192.168.5.51:20000
+    - 127.0.0.1:20001
   Key: user.rpc
 Data:
   Database:
-    Addr: 192.168.5.51:3306
+    Addr: 127.0.0.1:3307
     User: root
     Password: "123456"
     DataBase: lottery_system
@@ -14,7 +14,7 @@ Data:
     MaxOpenConn: 20000
     MaxIdleTime: 30
   Redis:
-    Addr: 192.168.5.52:6379
+    Addr: 127.0.0.1:6379
     Db: 8
     PassWord: "123456"
     PoolSize: 100
