@@ -2,6 +2,9 @@ Name: gateway
 Host: 0.0.0.0
 Port: 8998
 Timeout: 3000
+Telemetry:
+  Name: gateway
+  Disable: true
 Middlewares:
   Trace: false
   Log: true

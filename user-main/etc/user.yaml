@@ -1,5 +1,8 @@
 Name: user.rpc
 ListenOn: 127.0.0.1:8669
+Telemetry:
+  Name: user.rpc
+  Disable: true
 Etcd:
   Hosts:
     - 127.0.0.1:20001
