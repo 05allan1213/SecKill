@@ -1,0 +1,69 @@
+Auth:
+  Secret: "secret key"
+  Timeout: 1h
+
+Redis:
+  Addr: 127.0.0.1:6379
+  DB: 8
+  passWord: "123456"
+  read_timeout: 2s
+  write_timeout: 2s
+
+UserRpc:
+  Etcd:
+    Hosts:
+      - 127.0.0.1:20001
+    Key: user.rpc
+  NonBlock: true
+  Timeout: 2000
+  Middlewares:
+    Trace: true
+    Prometheus: true
+
+SeckillRpc:
+  Etcd:
+    Hosts:
+      - 127.0.0.1:20001
+    Key: seckill.rpc
+  NonBlock: true
+  Timeout: 2000
+  Middlewares:
+    Trace: true
+    Prometheus: true
+
+RoutePolicies:
+  /get_user_info:
+    limit_timeout: 2000
+    limit_rate: 1000
+    retry_time: 50
+    remarks: 查询用户信息
+  /bitstorm/get_user_info:
+    limit_timeout: 2000
+    limit_rate: 1000
+    retry_time: 50
+    remarks: 查询用户信息
+  /bitstorm/get_user_info_by_name:
+    limit_timeout: 2000
+    limit_rate: 1000
+    retry_time: 50
+    remarks: 查询用户信息
+  /bitstorm/v1/sec_kill:
+    limit_timeout: 2000
+    limit_rate: 1000
+    retry_time: 50
+    remarks: 秒杀v1
+  /bitstorm/v2/sec_kill:
+    limit_timeout: 2000
+    limit_rate: 1000
+    retry_time: 50
+    remarks: 秒杀v2
+  /bitstorm/v3/sec_kill:
+    limit_timeout: 2000
+    limit_rate: 1000
+    retry_time: 50
+    remarks: 秒杀v3
+  /bitstorm/v3/get_sec_kill_info:
+    limit_timeout: 2000
+    limit_rate: 1000
+    retry_time: 50
+    remarks: 查询秒杀状态

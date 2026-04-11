@@ -1,51 +1,55 @@
-# Kratos Project Template
+# user-main
 
-## Install Kratos
-```
-go install github.com/go-kratos/kratos/cmd/kratos/v2@latest
-```
-## Create a service
-```
-# Create a template project
-kratos new server
+`user-main` 提供用户 RPC 服务，负责用户创建、按 ID 查询和按用户名查询。
 
-cd server
-# Add a proto template
-kratos proto add api/server/server.proto
-# Generate the proto code
-kratos proto client api/server/server.proto
-# Generate the source code of service by proto file
-kratos proto server api/server/server.proto -t internal/service
+## 启动
 
-go generate ./...
-go build -o ./bin/ ./...
-./bin/server -conf ./configs
-```
-## Generate other auxiliary files by Makefile
-```
-# Download and update dependencies
-make init
-# Generate API files (include: pb.go, http, grpc, validate, swagger) by proto file
-make api
-# Generate all files
-make all
-```
-## Automated Initialization (wire)
-```
-# install wire
-go get github.com/google/wire/cmd/wire
+依赖：
+- `docker compose up -d etcd mysql redis`
 
-# generate wire
-cd cmd/server
-wire
-```
-
-## Docker
+本地配置启动：
 ```bash
-# build
-docker build -t <your-docker-image-name> .
-
-# run
-docker run --rm -p 8000:8000 -p 9000:9000 -v </path/to/your/configs>:/data/conf <your-docker-image-name>
+cd user-main
+GOCACHE=/tmp/go-build-cache-user go run ./cmd/user -f etc/user.yaml
 ```
 
+Etcd 运行时配置启动：
+```bash
+./scripts/sync_runtime_configs.sh
+cd user-main
+GOCACHE=/tmp/go-build-cache-user go run ./cmd/user -f ../configs/etcd/user.yaml
+```
+
+## 配置来源优先级
+
+1. 本地 YAML
+2. Etcd 运行时配置：`/bitstorm/user/runtime`
+3. 环境变量覆盖：`USER_MYSQL_PASSWORD`、`MYSQL_PASSWORD`、`USER_REDIS_PASSWORD`、`REDIS_PASSWORD`
+
+Etcd 模式只热更新 `Data`，不会热更新监听地址、日志、Prometheus、Telemetry。
+
+## 验证与测试
+
+```bash
+make test-unit
+make test-integration
+make smoke
+```
+
+单服务基线：
+```bash
+cd user-main
+GOCACHE=/tmp/go-build-cache-user go test ./...
+GOCACHE=/tmp/go-build-cache-user go test -tags=integration ./...
+```
+
+## 观测
+
+- 访问日志：`user-main/logs/access.log`
+- 结构化运行日志：`user-main/logs/stat.log`
+- Prometheus：`http://127.0.0.1:9102/metrics`
+- Trace 文件：`user-main/logs/trace.json`
+
+## RPC 参考
+
+- [rpc-reference.md](/home/monody/project/Microsecond%20killing%20service/docs/rpc-reference.md)

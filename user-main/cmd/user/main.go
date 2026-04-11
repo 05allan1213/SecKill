@@ -9,7 +9,6 @@ import (
 	userserver "github.com/BitofferHub/user/internal/server/user"
 	"github.com/BitofferHub/user/internal/svc"
 
-	"github.com/zeromicro/go-zero/core/conf"
 	"github.com/zeromicro/go-zero/core/service"
 	"github.com/zeromicro/go-zero/zrpc"
 	"google.golang.org/grpc"
@@ -21,11 +20,13 @@ var configFile = flag.String("f", "etc/user.yaml", "the config file")
 func main() {
 	flag.Parse()
 
-	var c config.Config
-	conf.MustLoad(*configFile, &c)
-	config.ApplyEnvOverrides(&c)
+	c, err := config.Load(*configFile)
+	if err != nil {
+		panic(err)
+	}
 
 	svcCtx := svc.NewServiceContext(c)
+	defer svcCtx.Close()
 
 	s := zrpc.MustNewServer(c.RpcServerConf, func(grpcServer *grpc.Server) {
 		v1.RegisterUserServer(grpcServer, userserver.NewUserServer(svcCtx))

@@ -35,7 +35,7 @@ func (l *BitstormGetUserInfoByNameLogic) BitstormGetUserInfoByName(req *types.Ge
 		return nil, &middleware.HTTPError{Status: http.StatusBadRequest, Message: "user_name is required"}
 	}
 
-	reply, err := l.svcCtx.UserClient.GetUserByName(rpcContext(l.ctx), &userv1.GetUserByNameRequest{
+	reply, err := l.svcCtx.UserClient().GetUserByName(rpcContext(l.ctx), &userv1.GetUserByNameRequest{
 		UserName: userName,
 	})
 	if err != nil {

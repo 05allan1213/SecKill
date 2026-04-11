@@ -8,8 +8,10 @@ import (
 
 	"github.com/BitofferHub/pkg/constant"
 	bitlog "github.com/BitofferHub/user/internal/log"
+	"github.com/zeromicro/go-zero/core/logx"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 )
 
 func NewTraceIDInterceptor() grpc.UnaryServerInterceptor {
@@ -26,9 +28,19 @@ func NewAccessLogInterceptor() grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 		begin := time.Now()
 		reply, err := handler(ctx, req)
-		traceID, _ := ctx.Value(constant.TraceID).(string)
-		bitlog.InfoContextf(ctx, "traceID:%s method:%s req:%+v cost:%v err:%v reply:%+v",
-			traceID, info.FullMethod, req, time.Since(begin), err, reply)
+		fields := []logx.LogField{
+			logx.Field("method", info.FullMethod),
+			logx.Field("duration_ms", time.Since(begin).Milliseconds()),
+			logx.Field("grpc_code", status.Code(err).String()),
+			logx.Field("req_summary", summarizePayload(req)),
+			logx.Field("reply_summary", summarizePayload(reply)),
+		}
+		if err != nil {
+			fields = append(fields, logx.Field("err", err))
+			bitlog.ErrorContextw(ctx, "rpc call failed", fields...)
+		} else {
+			bitlog.InfoContextw(ctx, "rpc call completed", fields...)
+		}
 		return reply, err
 	}
 }
@@ -51,4 +63,18 @@ func extractTraceID(ctx context.Context) string {
 		}
 	}
 	return ""
+}
+
+func summarizePayload(v interface{}) string {
+	if v == nil {
+		return "<nil>"
+	}
+
+	summary := fmt.Sprintf("%T %v", v, v)
+	const maxLen = 512
+	if len(summary) <= maxLen {
+		return summary
+	}
+
+	return summary[:maxLen] + "...(truncated)"
 }

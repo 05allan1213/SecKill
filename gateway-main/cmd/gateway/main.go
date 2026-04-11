@@ -8,7 +8,6 @@ import (
 	"github.com/BitofferHub/gateway/internal/handler"
 	gwmiddleware "github.com/BitofferHub/gateway/internal/middleware"
 	"github.com/BitofferHub/gateway/internal/svc"
-	"github.com/zeromicro/go-zero/core/conf"
 	"github.com/zeromicro/go-zero/rest"
 
 	_ "go.uber.org/automaxprocs"
@@ -22,8 +21,10 @@ var (
 func main() {
 	flag.Parse()
 
-	var c config.Config
-	conf.MustLoad(*configFile, &c)
+	c, err := config.Load(*configFile)
+	if err != nil {
+		panic(err)
+	}
 
 	server := rest.MustNewServer(c.RestConf)
 	defer server.Stop()
@@ -31,6 +32,7 @@ func main() {
 	server.Use(gwmiddleware.NewTraceMiddleware().Handle)
 
 	svcCtx := svc.NewServiceContext(c)
+	defer svcCtx.Close()
 	handler.RegisterHandlers(server, svcCtx)
 
 	fmt.Printf("Starting gateway %s at %s:%d...\n", Version, c.Host, c.Port)

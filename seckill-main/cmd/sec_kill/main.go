@@ -11,7 +11,6 @@ import (
 	seckillserver "github.com/BitofferHub/seckill/internal/server/seckill"
 	"github.com/BitofferHub/seckill/internal/svc"
 
-	"github.com/zeromicro/go-zero/core/conf"
 	"github.com/zeromicro/go-zero/core/service"
 	"github.com/zeromicro/go-zero/zrpc"
 	"google.golang.org/grpc"
@@ -25,12 +24,13 @@ var configFile = flag.String("f", "etc/seckill.yaml", "the config file")
 func main() {
 	flag.Parse()
 
-	var c config.Config
-	conf.MustLoad(*configFile, &c)
-	config.ApplyEnvOverrides(&c)
+	c, err := config.Load(*configFile)
+	if err != nil {
+		panic(err)
+	}
 
 	svcCtx := svc.NewServiceContext(c)
-	defer svcCtx.Data.Close()
+	defer svcCtx.Close()
 
 	consumerRunner := NewConsumerRunner(svcCtx)
 	if err := consumerRunner.Start(); err != nil {

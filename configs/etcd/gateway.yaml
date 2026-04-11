@@ -1,0 +1,105 @@
+Name: gateway
+Host: 0.0.0.0
+Port: 8998
+Timeout: 3000
+Log:
+  ServiceName: gateway-rest
+  Mode: file
+  Encoding: json
+  Path: logs
+  Level: info
+  KeepDays: 7
+  StackCooldownMillis: 100
+Prometheus:
+  Host: 0.0.0.0
+  Port: 9103
+  Path: /metrics
+Telemetry:
+  Name: gateway-rest
+  Endpoint: logs/trace.json
+  Sampler: 1.0
+  Batcher: file
+ConfigCenter:
+  Enabled: true
+  Endpoints:
+    - 127.0.0.1:20001
+  Key: /bitstorm/gateway/runtime
+  Watch: true
+  GracePeriod: 30s
+Middlewares:
+  Trace: true
+  Log: true
+  Prometheus: true
+  MaxConns: true
+  Breaker: true
+  Shedding: true
+  Timeout: true
+  Recover: true
+  Metrics: false
+  MaxBytes: true
+  Gunzip: true
+Auth:
+  Secret: "secret key"
+  Timeout: 1h
+Redis:
+  Addr: 127.0.0.1:6379
+  DB: 8
+  passWord: "123456"
+  read_timeout: 2s
+  write_timeout: 2s
+UserRpc:
+  Etcd:
+    Hosts:
+      - 127.0.0.1:20001
+    Key: user.rpc
+  NonBlock: true
+  Timeout: 2000
+  Middlewares:
+    Trace: true
+    Prometheus: true
+SeckillRpc:
+  Etcd:
+    Hosts:
+      - 127.0.0.1:20001
+    Key: seckill.rpc
+  NonBlock: true
+  Timeout: 2000
+  Middlewares:
+    Trace: true
+    Prometheus: true
+RoutePolicies:
+  /get_user_info:
+    limit_timeout: 2000
+    limit_rate: 1000
+    retry_time: 50
+    remarks: 查询用户信息
+  /bitstorm/get_user_info:
+    limit_timeout: 2000
+    limit_rate: 1000
+    retry_time: 50
+    remarks: 查询用户信息
+  /bitstorm/get_user_info_by_name:
+    limit_timeout: 2000
+    limit_rate: 1000
+    retry_time: 50
+    remarks: 查询用户信息
+  /bitstorm/v1/sec_kill:
+    limit_timeout: 2000
+    limit_rate: 1000
+    retry_time: 50
+    remarks: 秒杀v1
+  /bitstorm/v2/sec_kill:
+    limit_timeout: 2000
+    limit_rate: 1000
+    retry_time: 50
+    remarks: 秒杀v2
+  /bitstorm/v3/sec_kill:
+    limit_timeout: 2000
+    limit_rate: 1000
+    retry_time: 50
+    remarks: 秒杀v3
+  /bitstorm/v3/get_sec_kill_info:
+    limit_timeout: 2000
+    limit_rate: 1000
+    retry_time: 50
+    remarks: 查询秒杀状态

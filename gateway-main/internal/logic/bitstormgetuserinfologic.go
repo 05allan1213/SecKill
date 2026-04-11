@@ -30,7 +30,7 @@ func (l *BitstormGetUserInfoLogic) BitstormGetUserInfo() (resp *types.GetUserRep
 		return nil, err
 	}
 
-	reply, err := l.svcCtx.UserClient.GetUser(rpcContext(l.ctx), &userv1.GetUserRequest{UserID: userID})
+	reply, err := l.svcCtx.UserClient().GetUser(rpcContext(l.ctx), &userv1.GetUserRequest{UserID: userID})
 	if err != nil {
 		return nil, err
 	}

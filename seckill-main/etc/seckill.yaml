@@ -1,9 +1,39 @@
 Name: seckill.rpc
 ListenOn: 127.0.0.1:8002
+Log:
+  ServiceName: seckill-rpc
+  Mode: file
+  Encoding: json
+  Path: logs
+  Level: info
+  KeepDays: 7
+  StackCooldownMillis: 100
+Prometheus:
+  Host: 0.0.0.0
+  Port: 9101
+  Path: /metrics
+Telemetry:
+  Name: seckill-rpc
+  Endpoint: logs/trace.json
+  Sampler: 1.0
+  Batcher: file
+ConfigCenter:
+  Enabled: false
+  Endpoints:
+    - 127.0.0.1:20001
+  Key: /bitstorm/seckill/runtime
+  Watch: false
+  GracePeriod: 30s
 Etcd:
   Hosts:
     - 127.0.0.1:20001
   Key: seckill.rpc
+Middlewares:
+  Trace: true
+  Prometheus: true
+  Stat: true
+  Recover: true
+  Breaker: true
 Data:
   Database:
     Addr: 127.0.0.1:3307

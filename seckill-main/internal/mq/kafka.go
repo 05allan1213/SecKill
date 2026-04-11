@@ -23,7 +23,7 @@ func (kp *KafkaProducer) SendMessage(ctx context.Context, message []byte) error 
 
 func (kp *KafkaProducer) Close() {
 	if err := kp.writer.Close(); err != nil {
-		log.Errorf("Error closing producer: %v", err)
+		log.Errorf("close kafka producer failed: %v", err)
 	}
 }
 

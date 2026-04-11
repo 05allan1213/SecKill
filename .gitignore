@@ -37,6 +37,13 @@ Dockerfile.*
 *.pb.validate.mock.go
 wrkbench/
 third_party/
-
 *.md
+!README.md
+!docs/
+!docs/**/*.md
+!seckill-main/README.md
+!user-main/README.md
+!gateway-main/README.md
+!迭代优化计划.md
 .codex
+*.log

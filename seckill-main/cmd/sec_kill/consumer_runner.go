@@ -6,6 +6,7 @@ import (
 	"time"
 
 	bitlog "github.com/BitofferHub/seckill/internal/log"
+	seckilllogic "github.com/BitofferHub/seckill/internal/logic/seckill"
 	"github.com/BitofferHub/seckill/internal/svc"
 )
 
@@ -32,13 +33,28 @@ func (r *ConsumerRunner) Start() error {
 			}
 		}()
 
-		consumer := r.svcCtx.Data.GetMQConsumer()
-		if consumer == nil {
-			return
+		for {
+			select {
+			case <-r.ctx.Done():
+				return
+			default:
+			}
+
+			consumer := r.svcCtx.Store().GetMQConsumer()
+			if consumer == nil {
+				time.Sleep(500 * time.Millisecond)
+				continue
+			}
+
+			consumer.ConsumeMessages(r.ctx, func(ctx context.Context, message []byte) error {
+				return seckilllogic.NewConsumeMessageLogic(ctx, r.svcCtx).HandleConsumedMessage(message)
+			})
+
+			if r.ctx.Err() != nil {
+				return
+			}
+			time.Sleep(500 * time.Millisecond)
 		}
-		consumer.ConsumeMessages(r.ctx, func(ctx context.Context, message []byte) error {
-			return r.svcCtx.SecKillService.HandleConsumedMessage(ctx, message)
-		})
 	}()
 
 	return nil
@@ -49,8 +65,8 @@ func (r *ConsumerRunner) Stop(ctx context.Context) error {
 		if r.cancel != nil {
 			r.cancel()
 		}
-		if r.svcCtx != nil && r.svcCtx.Data != nil && r.svcCtx.Data.GetMQConsumer() != nil {
-			r.svcCtx.Data.GetMQConsumer().Close()
+		if r.svcCtx != nil && r.svcCtx.Store() != nil && r.svcCtx.Store().GetMQConsumer() != nil {
+			r.svcCtx.Store().GetMQConsumer().Close()
 		}
 	})
 

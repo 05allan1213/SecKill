@@ -32,7 +32,7 @@ func (l *LoginLogic) Login(req *types.LoginRequest) (resp *types.LoginResponse, 
 		return nil, &middleware.HTTPError{Status: http.StatusBadRequest, Message: "missing Username or Password"}
 	}
 
-	reply, err := l.svcCtx.UserClient.GetUserByName(rpcContext(l.ctx), &userv1.GetUserByNameRequest{
+	reply, err := l.svcCtx.UserClient().GetUserByName(rpcContext(l.ctx), &userv1.GetUserByNameRequest{
 		UserName: req.Username,
 	})
 	if err != nil {
@@ -42,7 +42,8 @@ func (l *LoginLogic) Login(req *types.LoginRequest) (resp *types.LoginResponse, 
 		return nil, &middleware.HTTPError{Status: http.StatusUnauthorized, Message: "incorrect Username or Password"}
 	}
 
-	token, expire, err := middleware.BuildToken(l.svcCtx.Config.Auth.Secret, l.svcCtx.Config.Auth.Timeout, reply.Data.UserID)
+	authConf := l.svcCtx.AuthConfig()
+	token, expire, err := middleware.BuildToken(authConf.Secret, authConf.Timeout, reply.Data.UserID)
 	if err != nil {
 		return nil, err
 	}

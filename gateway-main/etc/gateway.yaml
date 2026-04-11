@@ -2,10 +2,34 @@ Name: gateway
 Host: 0.0.0.0
 Port: 8998
 Timeout: 3000
+Log:
+  ServiceName: gateway-rest
+  Mode: file
+  Encoding: json
+  Path: logs
+  Level: info
+  KeepDays: 7
+  StackCooldownMillis: 100
+Prometheus:
+  Host: 0.0.0.0
+  Port: 9103
+  Path: /metrics
+Telemetry:
+  Name: gateway-rest
+  Endpoint: logs/trace.json
+  Sampler: 1.0
+  Batcher: file
+ConfigCenter:
+  Enabled: false
+  Endpoints:
+    - 127.0.0.1:20001
+  Key: /bitstorm/gateway/runtime
+  Watch: false
+  GracePeriod: 30s
 Middlewares:
-  Trace: false
+  Trace: true
   Log: true
-  Prometheus: false
+  Prometheus: true
   MaxConns: true
   Breaker: true
   Shedding: true
@@ -33,6 +57,9 @@ UserRpc:
     Key: user.rpc
   NonBlock: true
   Timeout: 2000
+  Middlewares:
+    Trace: true
+    Prometheus: true
 
 SeckillRpc:
   Etcd:
@@ -41,6 +68,9 @@ SeckillRpc:
     Key: seckill.rpc
   NonBlock: true
   Timeout: 2000
+  Middlewares:
+    Trace: true
+    Prometheus: true
 
 RoutePolicies:
   /get_user_info:

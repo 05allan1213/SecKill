@@ -1,0 +1,261 @@
+openapi: 3.0.3
+info:
+  title: Bitstorm Gateway API
+  version: 1.0.0
+servers:
+  - url: http://127.0.0.1:8998
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+    LoginResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int64
+        token:
+          type: string
+        expire:
+          type: string
+    UserData:
+      type: object
+      properties:
+        userID:
+          type: string
+        userName:
+          type: string
+        pwd:
+          type: string
+        sex:
+          type: integer
+          format: int64
+        age:
+          type: integer
+          format: int64
+        email:
+          type: string
+        contact:
+          type: string
+        mobile:
+          type: string
+        idCard:
+          type: string
+    GetUserReply:
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int64
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/UserData'
+    SecKillRequest:
+      type: object
+      required: [goodsNum, num]
+      properties:
+        goodsNum:
+          type: string
+        num:
+          type: integer
+          format: int32
+    SecKillV1Reply:
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int64
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            orderNum:
+              type: string
+    SecKillV2Reply:
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int64
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            orderNum:
+              type: string
+    SecKillV3Reply:
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int64
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            secNum:
+              type: string
+    GetSecKillInfoReply:
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int64
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            status:
+              type: integer
+              format: int64
+            orderNum:
+              type: string
+            secNum:
+              type: string
+            goodsNum:
+              type: string
+paths:
+  /login:
+    post:
+      summary: 登录
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+  /get_user_info:
+    get:
+      summary: 查询当前用户欢迎信息
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: ok
+  /bitstorm/get_user_info:
+    get:
+      summary: 查询当前用户信息
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetUserReply'
+  /bitstorm/get_user_info_by_name:
+    get:
+      summary: 按用户名查询用户
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: user_name
+          schema:
+            type: string
+        - in: query
+          name: userName
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetUserReply'
+  /bitstorm/v1/sec_kill:
+    post:
+      summary: 秒杀 V1
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SecKillRequest'
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SecKillV1Reply'
+  /bitstorm/v2/sec_kill:
+    post:
+      summary: 秒杀 V2
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SecKillRequest'
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SecKillV2Reply'
+  /bitstorm/v3/sec_kill:
+    post:
+      summary: 秒杀 V3
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SecKillRequest'
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SecKillV3Reply'
+  /bitstorm/v3/get_sec_kill_info:
+    get:
+      summary: 查询秒杀状态
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: sec_num
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetSecKillInfoReply'

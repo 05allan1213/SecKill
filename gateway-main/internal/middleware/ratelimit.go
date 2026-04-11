@@ -20,12 +20,13 @@ func NewRouteLimitMiddleware(svcCtx *svc.ServiceContext, routeKey string) *Route
 
 func (m *RouteLimitMiddleware) Handle(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if m.svcCtx.Limiter == nil {
+		limiter := m.svcCtx.Limiter()
+		if limiter == nil {
 			next(w, r)
 			return
 		}
 
-		result, err := m.svcCtx.Limiter.Allow(r.Context(), m.routeKey)
+		result, err := limiter.Allow(r.Context(), m.routeKey)
 		if err != nil || !result.IsAllowed {
 			WriteJSON(w, http.StatusOK, "ok")
 			return

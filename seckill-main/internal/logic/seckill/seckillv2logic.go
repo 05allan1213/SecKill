@@ -23,5 +23,5 @@ func NewSecKillV2Logic(ctx context.Context, svcCtx *svc.ServiceContext) *SecKill
 }
 
 func (l *SecKillV2Logic) SecKillV2(req *pb.SecKillV2Request) (*pb.SecKillV2Reply, error) {
-	return l.svcCtx.SecKillService.SecKillV2(l.ctx, req)
+	return secKillV2(l.ctx, l.svcCtx, req)
 }

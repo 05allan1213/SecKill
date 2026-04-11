@@ -35,7 +35,7 @@ func (l *BitstormGetSecKillInfoLogic) BitstormGetSecKillInfo(req *types.GetSecKi
 		return nil, &middleware.HTTPError{Status: http.StatusBadRequest, Message: "sec_num is required"}
 	}
 
-	reply, err := l.svcCtx.SeckillClient.GetSecKillInfo(rpcContext(l.ctx), &secproto.GetSecKillInfoRequest{
+	reply, err := l.svcCtx.SeckillClient().GetSecKillInfo(rpcContext(l.ctx), &secproto.GetSecKillInfoRequest{
 		UserID: userID,
 		SecNum: req.SecNum,
 	})

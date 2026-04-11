@@ -14,11 +14,11 @@ import (
 const identityKey = "jwtid"
 
 type AuthMiddleware struct {
-	secret []byte
+	auth func() config.AuthConf
 }
 
-func NewAuthMiddleware(c config.AuthConf) *AuthMiddleware {
-	return &AuthMiddleware{secret: []byte(c.Secret)}
+func NewAuthMiddleware(auth func() config.AuthConf) *AuthMiddleware {
+	return &AuthMiddleware{auth: auth}
 }
 
 func (m *AuthMiddleware) Handle(next http.HandlerFunc) http.HandlerFunc {
@@ -33,7 +33,7 @@ func (m *AuthMiddleware) Handle(next http.HandlerFunc) http.HandlerFunc {
 			if token.Method.Alg() != jwt.SigningMethodHS256.Alg() {
 				return nil, fmt.Errorf("unexpected signing method: %s", token.Method.Alg())
 			}
-			return m.secret, nil
+			return []byte(m.auth().Secret), nil
 		})
 		if err != nil || !token.Valid {
 			WriteCodeMessage(w, http.StatusUnauthorized, http.StatusUnauthorized, "token is invalid")

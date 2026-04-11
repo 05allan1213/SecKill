@@ -30,7 +30,7 @@ func (l *BitstormSecKillV2Logic) BitstormSecKillV2(req *types.SecKillRequest) (r
 		return nil, err
 	}
 
-	reply, err := l.svcCtx.SeckillClient.SecKillV2(rpcContext(l.ctx), &secproto.SecKillV2Request{
+	reply, err := l.svcCtx.SeckillClient().SecKillV2(rpcContext(l.ctx), &secproto.SecKillV2Request{
 		UserID:   userID,
 		GoodsNum: req.GoodsNum,
 		Num:      req.Num,

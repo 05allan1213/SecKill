@@ -23,5 +23,5 @@ func NewGetGoodsListLogic(ctx context.Context, svcCtx *svc.ServiceContext) *GetG
 }
 
 func (l *GetGoodsListLogic) GetGoodsList(req *pb.GetGoodsListRequest) (*pb.GetGoodsListReply, error) {
-	return l.svcCtx.SecKillService.GetGoodsList(l.ctx, req)
+	return getGoodsList(l.ctx, l.svcCtx, req)
 }

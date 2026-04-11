@@ -1,10 +1,23 @@
 package config
 
-import "github.com/zeromicro/go-zero/zrpc"
+import (
+	"time"
+
+	"github.com/zeromicro/go-zero/zrpc"
+)
 
 type Config struct {
 	zrpc.RpcServerConf
-	Data DataConf
+	Data         DataConf
+	ConfigCenter ConfigCenterConf `json:",optional"`
+}
+
+type ConfigCenterConf struct {
+	Enabled     bool          `json:",default=false"`
+	Endpoints   []string      `json:",optional"`
+	Key         string        `json:",optional"`
+	Watch       bool          `json:",default=false"`
+	GracePeriod time.Duration `json:",default=30s"`
 }
 
 type DataConf struct {
@@ -45,4 +58,8 @@ type KafkaConsumerConf struct {
 	Brokers []string
 	Topic   string
 	Offset  int64
+}
+
+type RuntimeConfig struct {
+	Data *DataConf `json:",optional"`
 }

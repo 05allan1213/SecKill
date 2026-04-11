@@ -23,5 +23,5 @@ func NewGetSecKillInfoLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Ge
 }
 
 func (l *GetSecKillInfoLogic) GetSecKillInfo(req *pb.GetSecKillInfoRequest) (*pb.GetSecKillInfoReply, error) {
-	return l.svcCtx.SecKillService.GetSecKillInfo(l.ctx, req)
+	return getSecKillInfo(l.ctx, l.svcCtx, req)
 }

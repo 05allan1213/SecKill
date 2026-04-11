@@ -1,0 +1,50 @@
+Name: user.rpc
+ListenOn: 127.0.0.1:8669
+Log:
+  ServiceName: user-rpc
+  Mode: file
+  Encoding: json
+  Path: logs
+  Level: info
+  KeepDays: 7
+  StackCooldownMillis: 100
+Prometheus:
+  Host: 0.0.0.0
+  Port: 9102
+  Path: /metrics
+Telemetry:
+  Name: user-rpc
+  Endpoint: logs/trace.json
+  Sampler: 1.0
+  Batcher: file
+ConfigCenter:
+  Enabled: true
+  Endpoints:
+    - 127.0.0.1:20001
+  Key: /bitstorm/user/runtime
+  Watch: true
+  GracePeriod: 30s
+Etcd:
+  Hosts:
+    - 127.0.0.1:20001
+  Key: user.rpc
+Middlewares:
+  Trace: true
+  Prometheus: true
+  Stat: true
+  Recover: true
+  Breaker: true
+Data:
+  Database:
+    Addr: 127.0.0.1:3307
+    User: root
+    Password: "123456"
+    DataBase: lottery_system
+    MaxIdleConn: 2000
+    MaxOpenConn: 20000
+    MaxIdleTime: 30
+  Redis:
+    Addr: 127.0.0.1:6379
+    Db: 8
+    PassWord: "123456"
+    PoolSize: 100

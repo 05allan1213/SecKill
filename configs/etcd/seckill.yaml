@@ -1,0 +1,61 @@
+Name: seckill.rpc
+ListenOn: 127.0.0.1:8002
+Log:
+  ServiceName: seckill-rpc
+  Mode: file
+  Encoding: json
+  Path: logs
+  Level: info
+  KeepDays: 7
+  StackCooldownMillis: 100
+Prometheus:
+  Host: 0.0.0.0
+  Port: 9101
+  Path: /metrics
+Telemetry:
+  Name: seckill-rpc
+  Endpoint: logs/trace.json
+  Sampler: 1.0
+  Batcher: file
+ConfigCenter:
+  Enabled: true
+  Endpoints:
+    - 127.0.0.1:20001
+  Key: /bitstorm/seckill/runtime
+  Watch: true
+  GracePeriod: 30s
+Etcd:
+  Hosts:
+    - 127.0.0.1:20001
+  Key: seckill.rpc
+Middlewares:
+  Trace: true
+  Prometheus: true
+  Stat: true
+  Recover: true
+  Breaker: true
+Data:
+  Database:
+    Addr: 127.0.0.1:3307
+    User: root
+    Password: "123456"
+    DataBase: bitstorm
+    MaxIdleConn: 2000
+    MaxOpenConn: 20000
+    MaxIdleTime: 30
+  Redis:
+    Addr: 127.0.0.1:6379
+    Db: 0
+    PassWord: "123456"
+    PoolSize: 100
+  Kafka:
+    Producer:
+      Brokers:
+        - 127.0.0.1:9092
+      Topic: seckill
+      Ack: 0
+    Consumer:
+      Brokers:
+        - 127.0.0.1:9092
+      Topic: seckill
+      Offset: 0

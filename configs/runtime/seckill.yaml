@@ -1,0 +1,25 @@
+Data:
+  Database:
+    Addr: 127.0.0.1:3307
+    User: root
+    Password: "123456"
+    DataBase: bitstorm
+    MaxIdleConn: 2000
+    MaxOpenConn: 20000
+    MaxIdleTime: 30
+  Redis:
+    Addr: 127.0.0.1:6379
+    Db: 0
+    PassWord: "123456"
+    PoolSize: 100
+  Kafka:
+    Producer:
+      Brokers:
+        - 127.0.0.1:9092
+      Topic: seckill
+      Ack: 0
+    Consumer:
+      Brokers:
+        - 127.0.0.1:9092
+      Topic: seckill
+      Offset: 0

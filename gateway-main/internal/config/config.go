@@ -14,6 +14,15 @@ type Config struct {
 	UserRpc       zrpc.RpcClientConf     `json:",optional"`
 	SeckillRpc    zrpc.RpcClientConf     `json:",optional"`
 	RoutePolicies map[string]RoutePolicy `json:",optional"`
+	ConfigCenter  ConfigCenterConf       `json:",optional"`
+}
+
+type ConfigCenterConf struct {
+	Enabled     bool          `json:",default=false"`
+	Endpoints   []string      `json:",optional"`
+	Key         string        `json:",optional"`
+	Watch       bool          `json:",default=false"`
+	GracePeriod time.Duration `json:",default=30s"`
 }
 
 type AuthConf struct {
@@ -34,4 +43,12 @@ type RoutePolicy struct {
 	LimitRate    int    `json:"limit_rate,default=1000"`
 	RetryTime    int    `json:"retry_time,default=50"`
 	Remarks      string `json:"remarks,optional"`
+}
+
+type RuntimeConfig struct {
+	Auth          *AuthConf              `json:",optional"`
+	Redis         *RedisConf             `json:",optional"`
+	UserRpc       *zrpc.RpcClientConf    `json:",optional"`
+	SeckillRpc    *zrpc.RpcClientConf    `json:",optional"`
+	RoutePolicies map[string]RoutePolicy `json:",optional"`
 }
