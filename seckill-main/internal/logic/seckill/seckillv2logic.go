@@ -5,6 +5,7 @@ import (
 	"time"
 
 	pb "github.com/BitofferHub/seckill/api/sec_kill/proto"
+	"github.com/BitofferHub/seckill/internal/data"
 	"github.com/BitofferHub/seckill/internal/log"
 	"github.com/BitofferHub/seckill/internal/svc"
 	"github.com/zeromicro/go-zero/core/logx"
@@ -31,10 +32,14 @@ func (l *SecKillV2Logic) SecKillV2(req *pb.SecKillV2Request) (*pb.SecKillV2Reply
 		log.Field(log.FieldGoodsNum, req.GoodsNum),
 	)
 
-	goods, err := l.svcCtx.GoodsRepo.GetGoodsInfoByNumWithCache(l.ctx, l.svcCtx.Data, req.GoodsNum)
+	goods, err := l.svcCtx.GoodsRepo.FindByNum(l.ctx, l.svcCtx.Data, req.GoodsNum)
 	if err != nil {
 		log.Error(l.ctx, "load goods failed", log.Field(log.FieldError, err.Error()))
 		return nil, goodsLookupError(err)
+	}
+
+	if !l.svcCtx.Data.IsRedisAvailable(l.ctx, l.svcCtx.Config.Fallback.TimeoutMs) {
+		return l.handleFallback(goods, req)
 	}
 
 	record := newPreSecKillRecord(goods, req.UserID, "")
@@ -68,4 +73,31 @@ func (l *SecKillV2Logic) SecKillV2(req *pb.SecKillV2Request) (*pb.SecKillV2Reply
 	}
 
 	return buildV2Reply(orderNum, code), nil
+}
+
+func (l *SecKillV2Logic) handleFallback(goods *data.Goods, req *pb.SecKillV2Request) (*pb.SecKillV2Reply, error) {
+	if !l.svcCtx.Config.Fallback.Enabled {
+		log.Error(l.ctx, "redis unavailable and fallback disabled")
+		return nil, dependencyUnavailableError("redis unavailable and fallback disabled")
+	}
+
+	log.Warn(l.ctx, "redis unavailable, falling back to v1 database transaction",
+		log.Field(log.FieldAction, "seckill.v2.fallback"),
+		log.Field(log.FieldGoodsNum, req.GoodsNum),
+	)
+
+	orderNum, code, err := secKillInStore(l.ctx, l.svcCtx, goods, "", req.UserID, int(req.Num))
+	if err != nil {
+		log.Error(l.ctx, "seckill v2 fallback failed",
+			log.Field(log.FieldError, err.Error()),
+			log.Field("resultCode", code),
+		)
+		return nil, dependencyUnavailableError("seckill storage unavailable")
+	}
+
+	reply := buildV2Reply(orderNum, code)
+	if code == SUCCESS {
+		reply.Message = "success (fallback)"
+	}
+	return reply, nil
 }

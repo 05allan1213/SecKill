@@ -7,6 +7,7 @@ type Config struct {
 	HealthProbe HealthProbeConf
 	Data        DataConf
 	Log         LogConf
+	Fallback    FallbackConf
 }
 
 type HealthProbeConf struct {
@@ -18,6 +19,11 @@ type LogConf struct {
 	AccessDetail       string `json:",default=request"`
 	SQLMode            string `json:",default=slow"`
 	SQLSlowThresholdMs int64  `json:",default=100"`
+}
+
+type FallbackConf struct {
+	Enabled   bool `json:",default=true"`
+	TimeoutMs int  `json:",default=500"`
 }
 
 type DataConf struct {

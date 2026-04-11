@@ -100,6 +100,16 @@ func (p *Data) PingRedis(ctx context.Context) error {
 	return err
 }
 
+func (p *Data) IsRedisAvailable(parentCtx context.Context, timeoutMs int) bool {
+	if p == nil || p.rdb == nil {
+		return false
+	}
+	ctx, cancel := context.WithTimeout(parentCtx, time.Duration(timeoutMs)*time.Millisecond)
+	defer cancel()
+	_, _, err := p.rdb.Get(ctx, "health:probe")
+	return err == nil
+}
+
 func (p *Data) PingKafkaProducer(ctx context.Context) error {
 	if p == nil || len(p.brokers) == 0 {
 		return errors.New("kafka not configured")

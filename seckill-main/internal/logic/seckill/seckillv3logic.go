@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/BitofferHub/pkg/utils"
 	pb "github.com/BitofferHub/seckill/api/sec_kill/proto"
 	"github.com/BitofferHub/seckill/internal/data"
 	"github.com/BitofferHub/seckill/internal/log"
@@ -32,10 +33,14 @@ func (l *SecKillV3Logic) SecKillV3(req *pb.SecKillV3Request) (*pb.SecKillV3Reply
 		log.Field(log.FieldGoodsNum, req.GoodsNum),
 	)
 
-	goods, err := l.svcCtx.GoodsRepo.GetGoodsInfoByNumWithCache(l.ctx, l.svcCtx.Data, req.GoodsNum)
+	goods, err := l.svcCtx.GoodsRepo.FindByNum(l.ctx, l.svcCtx.Data, req.GoodsNum)
 	if err != nil {
 		log.Error(l.ctx, "load goods failed", log.Field(log.FieldError, err.Error()))
 		return nil, goodsLookupError(err)
+	}
+
+	if !l.svcCtx.Data.IsRedisAvailable(l.ctx, l.svcCtx.Config.Fallback.TimeoutMs) {
+		return l.handleFallback(goods, req)
 	}
 
 	record := newPreSecKillRecord(goods, req.UserID, "")
@@ -67,4 +72,36 @@ func (l *SecKillV3Logic) SecKillV3(req *pb.SecKillV3Request) (*pb.SecKillV3Reply
 	}
 
 	return buildV3Reply(secNum, SUCCESS), nil
+}
+
+func (l *SecKillV3Logic) handleFallback(goods *data.Goods, req *pb.SecKillV3Request) (*pb.SecKillV3Reply, error) {
+	if !l.svcCtx.Config.Fallback.Enabled {
+		log.Error(l.ctx, "redis unavailable and fallback disabled")
+		return nil, dependencyUnavailableError("redis unavailable and fallback disabled")
+	}
+
+	log.Warn(l.ctx, "redis unavailable, falling back to v1 database transaction",
+		log.Field(log.FieldAction, "seckill.v3.fallback"),
+		log.Field(log.FieldGoodsNum, req.GoodsNum),
+	)
+
+	secNum := utils.NewUuid()
+	orderNum, code, err := secKillInStore(l.ctx, l.svcCtx, goods, secNum, req.UserID, int(req.Num))
+	if err != nil {
+		log.Error(l.ctx, "seckill v3 fallback failed",
+			log.Field(log.FieldError, err.Error()),
+			log.Field("resultCode", code),
+		)
+		return nil, dependencyUnavailableError("seckill storage unavailable")
+	}
+
+	reply := buildV3Reply(secNum, code)
+	if code == SUCCESS {
+		reply.Message = "success (fallback)"
+		log.Info(l.ctx, "seckill v3 fallback succeeded",
+			log.Field(log.FieldSecNum, secNum),
+			log.Field(log.FieldOrderNum, orderNum),
+		)
+	}
+	return reply, nil
 }
