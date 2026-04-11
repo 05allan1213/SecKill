@@ -44,6 +44,11 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 		Path:    "/bitstorm/get_user_info_by_name",
 		Handler: BitstormGetUserInfoByNameHandler(serverCtx),
 	})
+	addProtected("/bitstorm/sec_kill", rest.Route{
+		Method:  http.MethodPost,
+		Path:    "/bitstorm/sec_kill",
+		Handler: BitstormSecKillV3Handler(serverCtx),
+	})
 	addProtected("/bitstorm/v1/sec_kill", rest.Route{
 		Method:  http.MethodPost,
 		Path:    "/bitstorm/v1/sec_kill",

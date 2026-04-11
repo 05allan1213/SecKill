@@ -114,7 +114,7 @@ curl -X POST http://localhost:8998/login \
 
 **请求：**
 ```bash
-curl -X POST http://localhost:8998/bitstorm/v1/sec_kill \
+curl -X POST http://localhost:8998/bitstorm/sec_kill \
   -H "Content-Type: application/json" \
   -d '{"goodsNum":"abc123","num":1}'
 ```
@@ -150,11 +150,11 @@ curl -X GET "http://localhost:8998/get_user_info" \
 
 ### 3. 秒杀功能测试
 
-#### 3.1 秒杀接口 v3（推荐）
+#### 3.1 秒杀接口（默认 v3 版本，推荐）
 
 **请求：**
 ```bash
-curl -X POST http://localhost:8998/bitstorm/v3/sec_kill \
+curl -X POST http://localhost:8998/bitstorm/sec_kill \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <your_token>" \
   -d '{"goodsNum":"abc123","num":1}'
@@ -180,11 +180,38 @@ curl -X POST http://localhost:8998/bitstorm/v3/sec_kill \
 ```
 
 **测试说明：**
-- v3 版本使用 Kafka 异步处理订单
+- 默认接口自动使用 v3 版本（Kafka 异步处理）
 - 返回秒杀单号（secNum）用于查询状态
 - 库存在 Redis 中实时扣减
+- 性能最优，适合高并发场景
 
-#### 3.2 查询秒杀状态
+#### 3.2 指定版本秒杀接口
+
+**v1 版本（同步处理）：**
+```bash
+curl -X POST http://localhost:8998/bitstorm/v1/sec_kill \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <your_token>" \
+  -d '{"goodsNum":"abc123","num":1}'
+```
+
+**v2 版本（Redis 预扣）：**
+```bash
+curl -X POST http://localhost:8998/bitstorm/v2/sec_kill \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <your_token>" \
+  -d '{"goodsNum":"abc123","num":1}'
+```
+
+**v3 版本（Kafka 异步）：**
+```bash
+curl -X POST http://localhost:8998/bitstorm/v3/sec_kill \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <your_token>" \
+  -d '{"goodsNum":"abc123","num":1}'
+```
+
+#### 3.3 查询秒杀状态
 
 **请求：**
 ```bash

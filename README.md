@@ -372,9 +372,11 @@ Authorization: Bearer <token>
 
 ### 秒杀接口
 
+**推荐使用默认接口（v3 版本）**：
+
 ```bash
-# 秒杀 v3 (推荐)
-POST /bitstorm/v3/sec_kill
+# 秒杀（默认 v3 版本，推荐）
+POST /bitstorm/sec_kill
 Authorization: Bearer <token>
 Content-Type: application/json
 {"goodsNum":"abc123","num":1}
@@ -383,6 +385,34 @@ Content-Type: application/json
 GET /bitstorm/v3/get_sec_kill_info?sec_num=<secNum>
 Authorization: Bearer <token>
 ```
+
+**指定版本接口**：
+
+```bash
+# v1 版本（同步处理，低并发场景）
+POST /bitstorm/v1/sec_kill
+Authorization: Bearer <token>
+Content-Type: application/json
+{"goodsNum":"abc123","num":1}
+
+# v2 版本（Redis 预扣，中等并发场景）
+POST /bitstorm/v2/sec_kill
+Authorization: Bearer <token>
+Content-Type: application/json
+{"goodsNum":"abc123","num":1}
+
+# v3 版本（Kafka 异步，高并发场景）⭐ 推荐
+POST /bitstorm/v3/sec_kill
+Authorization: Bearer <token>
+Content-Type: application/json
+{"goodsNum":"abc123","num":1}
+```
+
+**版本说明**：
+- **默认接口** `/bitstorm/sec_kill` -> 自动使用 v3 版本（推荐）
+- **v1 版本**：同步处理，直接扣减数据库库存，适合低并发场景
+- **v2 版本**：Redis 预扣库存，同步创建订单，适合中等并发场景
+- **v3 版本**：Redis 预扣库存，Kafka 异步处理，适合高并发场景 ⭐ 推荐
 
 ## 🔍 监控和管理
 
