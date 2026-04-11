@@ -3,8 +3,8 @@ package userlogic
 import (
 	"context"
 
-	"github.com/BitofferHub/user/internal/svc"
 	v1 "github.com/BitofferHub/user/api/user/v1"
+	"github.com/BitofferHub/user/internal/svc"
 
 	"github.com/zeromicro/go-zero/core/logx"
 )

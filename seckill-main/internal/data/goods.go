@@ -4,69 +4,32 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/BitofferHub/seckill/internal/biz"
 	"github.com/BitofferHub/seckill/internal/log"
+	"time"
 )
 
-type goodsRepo struct {
+type GoodsRepo struct {
 	data *Data
 }
 
-// NewGoodsRepo
-//
-//	@Author <a href="https://bitoffer.cn">狂飙训练营</a>
-//	@Description:
-//	@param data
-//	@return biz.GoodsRepo
-func NewGoodsRepo(data *Data) biz.GoodsRepo {
-	return &goodsRepo{
+func NewGoodsRepo(data *Data) *GoodsRepo {
+	return &GoodsRepo{
 		data: data,
 	}
 }
 
-// Save
-//
-//	@Author <a href="https://bitoffer.cn">狂飙训练营</a>
-//	@Description:
-//	@Receiver r
-//	@param ctx
-//	@param data
-//	@param g
-//	@return *biz.Goods
-//	@return error
-func (r *goodsRepo) Save(ctx context.Context, data *biz.Data, g *biz.Goods) (*biz.Goods, error) {
+func (r *GoodsRepo) Save(ctx context.Context, data *Data, g *Goods) (*Goods, error) {
 	err := data.GetDB().WithContext(ctx).Create(g).Error
 	return g, err
 }
 
-// Update
-//
-//	@Author <a href="https://bitoffer.cn">狂飙训练营</a>
-//	@Description:
-//	@Receiver r
-//	@param ctx
-//	@param data
-//	@param g
-//	@return *biz.Goods
-//	@return error
-func (r *goodsRepo) Update(ctx context.Context, data *biz.Data, g *biz.Goods) (*biz.Goods, error) {
+func (r *GoodsRepo) Update(ctx context.Context, data *Data, g *Goods) (*Goods, error) {
 	return nil, nil
 }
 
-// FindByIDWithCache
-//
-//	@Author <a href="https://bitoffer.cn">狂飙训练营</a>
-//	@Description:
-//	@Receiver r
-//	@param ctx
-//	@param data
-//	@param goodsID
-//	@return *biz.Goods
-//	@return error
-func (r *goodsRepo) FindByIDWithCache(ctx context.Context, data *biz.Data,
-	goodsID int64) (*biz.Goods, error) {
+func (r *GoodsRepo) FindByIDWithCache(ctx context.Context, data *Data, goodsID int64) (*Goods, error) {
 	cacheKey := fmt.Sprintf("goodsinfo:%d", goodsID)
-	var goods = new(biz.Goods)
+	var goods = new(Goods)
 	rdbGoodsInfo, exist, err := data.GetCache().Get(ctx, cacheKey)
 	if err == nil && exist {
 		err = json.Unmarshal([]byte(rdbGoodsInfo), goods)
@@ -88,18 +51,8 @@ func (r *goodsRepo) FindByIDWithCache(ctx context.Context, data *biz.Data,
 	return goods, nil
 }
 
-// FindByID
-//
-//	@Author <a href="https://bitoffer.cn">狂飙训练营</a>
-//	@Description:
-//	@Receiver r
-//	@param ctx
-//	@param data
-//	@param goodsID
-//	@return *biz.Goods
-//	@return error
-func (r *goodsRepo) FindByID(ctx context.Context, data *biz.Data, goodsID int64) (*biz.Goods, error) {
-	var goods biz.Goods
+func (r *GoodsRepo) FindByID(ctx context.Context, data *Data, goodsID int64) (*Goods, error) {
+	var goods Goods
 	err := data.GetDB().WithContext(ctx).Where("id = ?", goodsID).First(&goods).Error
 	if err != nil {
 		return nil, err
@@ -107,8 +60,8 @@ func (r *goodsRepo) FindByID(ctx context.Context, data *biz.Data, goodsID int64)
 	return &goods, nil
 }
 
-func (r *goodsRepo) FindByNum(ctx context.Context, data *biz.Data, goodsNum string) (*biz.Goods, error) {
-	var goods biz.Goods
+func (r *GoodsRepo) FindByNum(ctx context.Context, data *Data, goodsNum string) (*Goods, error) {
+	var goods Goods
 	err := data.GetDB().WithContext(ctx).Where("goods_num = ?", goodsNum).First(&goods).Error
 	if err != nil {
 		return nil, err
@@ -116,18 +69,8 @@ func (r *goodsRepo) FindByNum(ctx context.Context, data *biz.Data, goodsNum stri
 	return &goods, nil
 }
 
-// ListAll
-//
-//	@Author <a href="https://bitoffer.cn">狂飙训练营</a>
-//	@Description:
-//	@Receiver r
-//	@param ctx
-//	@param data
-//	@return []*biz.Goods
-//	@return error
-func (r *goodsRepo) GetGoodsList(ctx context.Context, data *biz.Data, offset int, limit int) ([]*biz.Goods, error) {
-
-	goodsList := make([]*biz.Goods, 0)
+func (r *GoodsRepo) GetGoodsList(ctx context.Context, data *Data, offset int, limit int) ([]*Goods, error) {
+	goodsList := make([]*Goods, 0)
 	err := data.GetDB().WithContext(ctx).
 		Offset(offset).
 		Limit(limit).
@@ -136,4 +79,28 @@ func (r *goodsRepo) GetGoodsList(ctx context.Context, data *biz.Data, offset int
 		return nil, err
 	}
 	return goodsList, err
+}
+
+func (r *GoodsRepo) GetGoodsInfoByNumWithCache(ctx context.Context, data *Data, goodsNum string) (*Goods, error) {
+	cacheKey := fmt.Sprintf("goodsInfo:%s", goodsNum)
+	var goods = new(Goods)
+	rdbGoodsInfo, exist, err := data.GetCache().Get(ctx, cacheKey)
+	if err == nil && exist {
+		err = json.Unmarshal([]byte(rdbGoodsInfo), goods)
+		if err == nil {
+			return goods, nil
+		}
+	}
+	goods, err = r.FindByNum(ctx, data, goodsNum)
+	if err != nil {
+		return nil, err
+	}
+	goodsStr, _ := json.Marshal(goods)
+	if len(goodsStr) != 0 {
+		err = data.GetCache().Set(ctx, cacheKey, string(goodsStr), 10*time.Second)
+		if err != nil {
+			log.InfoContextf(ctx, "set goods cacheKey err %s", err.Error())
+		}
+	}
+	return goods, nil
 }

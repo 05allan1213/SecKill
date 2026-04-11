@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/BitofferHub/gateway/internal/middleware"
+	"github.com/BitofferHub/gateway/internal/svc"
 	"github.com/BitofferHub/gateway/internal/types"
 	"github.com/BitofferHub/pkg/constant"
 	secproto "github.com/BitofferHub/seckill/api/sec_kill/proto"
@@ -29,6 +30,34 @@ func currentUserID(ctx context.Context) (int64, error) {
 		return 0, &middleware.HTTPError{Status: 401, Message: "no authentication"}
 	}
 	return parsed, nil
+}
+
+func fetchCurrentUser(ctx context.Context, svcCtx *svc.ServiceContext) (*userv1.GetUserReply, error) {
+	userID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return svcCtx.UserClient.GetUser(rpcContext(ctx), &userv1.GetUserRequest{UserID: userID})
+}
+
+func runSecKill[PBReq any, PBResp any, Reply any](
+	ctx context.Context,
+	svcCtx *svc.ServiceContext,
+	req *types.SecKillRequest,
+	build func(int64, *types.SecKillRequest) *PBReq,
+	invoke func(context.Context, *PBReq) (*PBResp, error),
+	mapper func(*PBResp) *Reply,
+) (*Reply, error) {
+	userID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	reply, err := invoke(rpcContext(ctx), build(userID, req))
+	if err != nil {
+		return nil, err
+	}
+	return mapper(reply), nil
 }
 
 func mapUserReply(resp *userv1.GetUserReply) *types.GetUserReply {

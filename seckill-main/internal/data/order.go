@@ -4,69 +4,31 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/BitofferHub/seckill/internal/biz"
 	"github.com/BitofferHub/seckill/internal/log"
 )
 
-type orderRepo struct {
+type OrderRepo struct {
 	data *Data
 }
 
-// NewOrderRepo
-//
-//	@Author <a href="https://bitoffer.cn">狂飙训练营</a>
-//	@Description:
-//	@param data
-//	@return biz.OrderRepo
-func NewOrderRepo(data *Data) biz.OrderRepo {
-	return &orderRepo{
+func NewOrderRepo(data *Data) *OrderRepo {
+	return &OrderRepo{
 		data: data,
 	}
 }
 
-// Save
-//
-//	@Author <a href="https://bitoffer.cn">狂飙训练营</a>
-//	@Description:
-//	@Receiver r
-//	@param ctx
-//	@param data
-//	@param g
-//	@return *biz.Order
-//	@return error
-func (r *orderRepo) Save(ctx context.Context, data *biz.Data, g *biz.Order) (*biz.Order, error) {
+func (r *OrderRepo) Save(ctx context.Context, data *Data, g *Order) (*Order, error) {
 	err := data.GetDB().WithContext(ctx).Create(g).Error
 	return g, err
 }
 
-// Update
-//
-//	@Author <a href="https://bitoffer.cn">狂飙训练营</a>
-//	@Description:
-//	@Receiver r
-//	@param ctx
-//	@param data
-//	@param g
-//	@return *biz.Order
-//	@return error
-func (r *orderRepo) Update(ctx context.Context, data *biz.Data, g *biz.Order) (*biz.Order, error) {
+func (r *OrderRepo) Update(ctx context.Context, data *Data, g *Order) (*Order, error) {
 	return nil, nil
 }
 
-// FindByIDWithCache
-//
-//	@Author <a href="https://bitoffer.cn">狂飙训练营</a>
-//	@Description:
-//	@Receiver r
-//	@param ctx
-//	@param data
-//	@param orderID
-//	@return *biz.Order
-//	@return error
-func (r *orderRepo) FindByIDWithCache(ctx context.Context, data *biz.Data,
-	orderID int64) (*biz.Order, error) {
+func (r *OrderRepo) FindByIDWithCache(ctx context.Context, data *Data, orderID int64) (*Order, error) {
 	cacheKey := fmt.Sprintf("orderinfo:%d", orderID)
-	var order = new(biz.Order)
+	var order = new(Order)
 	rdbOrderInfo, exist, err := data.GetCache().Get(ctx, cacheKey)
 	if err == nil && exist {
 		err = json.Unmarshal([]byte(rdbOrderInfo), order)
@@ -88,18 +50,8 @@ func (r *orderRepo) FindByIDWithCache(ctx context.Context, data *biz.Data,
 	return order, nil
 }
 
-// FindByID
-//
-//	@Author <a href="https://bitoffer.cn">狂飙训练营</a>
-//	@Description:
-//	@Receiver r
-//	@param ctx
-//	@param data
-//	@param orderID
-//	@return *biz.Order
-//	@return error
-func (r *orderRepo) FindByID(ctx context.Context, data *biz.Data, orderID int64) (*biz.Order, error) {
-	var order biz.Order
+func (r *OrderRepo) FindByID(ctx context.Context, data *Data, orderID int64) (*Order, error) {
+	var order Order
 	err := data.GetDB().WithContext(ctx).Where("id = ?", orderID).First(&order).Error
 	if err != nil {
 		return nil, err
@@ -107,8 +59,8 @@ func (r *orderRepo) FindByID(ctx context.Context, data *biz.Data, orderID int64)
 	return &order, nil
 }
 
-func (r *orderRepo) FindByNum(ctx context.Context, data *biz.Data, orderNum int64) (*biz.Order, error) {
-	var order biz.Order
+func (r *OrderRepo) FindByNum(ctx context.Context, data *Data, orderNum int64) (*Order, error) {
+	var order Order
 	err := data.GetDB().WithContext(ctx).Where("order_num = ?", orderNum).First(&order).Error
 	if err != nil {
 		return nil, err
@@ -116,15 +68,6 @@ func (r *orderRepo) FindByNum(ctx context.Context, data *biz.Data, orderNum int6
 	return &order, nil
 }
 
-// ListAll
-//
-//	@Author <a href="https://bitoffer.cn">狂飙训练营</a>
-//	@Description:
-//	@Receiver r
-//	@param ctx
-//	@param data
-//	@return []*biz.Order
-//	@return error
-func (r *orderRepo) ListAll(ctx context.Context, data *biz.Data) ([]*biz.Order, error) {
+func (r *OrderRepo) ListAll(ctx context.Context, data *Data) ([]*Order, error) {
 	return nil, nil
 }

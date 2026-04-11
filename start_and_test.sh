@@ -200,7 +200,27 @@ test_api() {
     
     echo ""
     echo -e "${YELLOW}----------------------------------------${NC}"
-    echo -e "${YELLOW}测试 2: 获取用户信息 GET /bitstorm/get_user_info${NC}"
+    echo -e "${YELLOW}测试 2: 获取欢迎信息 GET /get_user_info${NC}"
+    echo -e "${YELLOW}注意: 需要使用 Authorization: Bearer <token> 格式${NC}"
+    echo -e "${YELLOW}----------------------------------------${NC}"
+    
+    WELCOME_INFO=$(curl -s "$GATEWAY_URL/get_user_info" \
+        -H "Authorization: Bearer $TOKEN")
+    
+    WELCOME=$(echo $WELCOME_INFO | grep -o '"welcome":"[^"]*"' | cut -d'"' -f4)
+    
+    if [ -n "$WELCOME" ]; then
+        print_success "获取欢迎信息成功"
+        echo "  欢迎信息: $WELCOME"
+        ((pass_count++))
+    else
+        print_error "获取欢迎信息失败: $WELCOME_INFO"
+        ((fail_count++))
+    fi
+    
+    echo ""
+    echo -e "${YELLOW}----------------------------------------${NC}"
+    echo -e "${YELLOW}测试 3: 获取用户详细信息 GET /bitstorm/get_user_info${NC}"
     echo -e "${YELLOW}注意: 需要使用 Authorization: Bearer <token> 格式${NC}"
     echo -e "${YELLOW}----------------------------------------${NC}"
     
@@ -221,7 +241,7 @@ test_api() {
     
     echo ""
     echo -e "${YELLOW}----------------------------------------${NC}"
-    echo -e "${YELLOW}测试 3: 按用户名获取用户信息 GET /bitstorm/get_user_info_by_name${NC}"
+    echo -e "${YELLOW}测试 4: 按用户名获取用户信息 GET /bitstorm/get_user_info_by_name${NC}"
     echo -e "${YELLOW}----------------------------------------${NC}"
     
     USER_BY_NAME=$(curl -s "$GATEWAY_URL/bitstorm/get_user_info_by_name?user_name=admin" \
@@ -240,7 +260,7 @@ test_api() {
     
     echo ""
     echo -e "${YELLOW}----------------------------------------${NC}"
-    echo -e "${YELLOW}测试 4: 秒杀v1接口 POST /bitstorm/v1/sec_kill${NC}"
+    echo -e "${YELLOW}测试 5: 秒杀v1接口 POST /bitstorm/v1/sec_kill${NC}"
     echo -e "${YELLOW}----------------------------------------${NC}"
     
     SECKILL_V1=$(curl -s -X POST "$GATEWAY_URL/bitstorm/v1/sec_kill" \
@@ -261,7 +281,7 @@ test_api() {
     
     echo ""
     echo -e "${YELLOW}----------------------------------------${NC}"
-    echo -e "${YELLOW}测试 5: 秒杀v2接口 POST /bitstorm/v2/sec_kill${NC}"
+    echo -e "${YELLOW}测试 6: 秒杀v2接口 POST /bitstorm/v2/sec_kill${NC}"
     echo -e "${YELLOW}注意: 需要在Redis中设置库存 SK:Stock:1${NC}"
     echo -e "${YELLOW}----------------------------------------${NC}"
     
@@ -283,7 +303,7 @@ test_api() {
     
     echo ""
     echo -e "${YELLOW}----------------------------------------${NC}"
-    echo -e "${YELLOW}测试 6: 秒杀v3接口 POST /bitstorm/v3/sec_kill${NC}"
+    echo -e "${YELLOW}测试 7: 秒杀v3接口 POST /bitstorm/v3/sec_kill${NC}"
     echo -e "${YELLOW}注意: 需要在Redis中设置库存 SK:Stock:1${NC}"
     echo -e "${YELLOW}----------------------------------------${NC}"
     
@@ -305,7 +325,7 @@ test_api() {
     
     echo ""
     echo -e "${YELLOW}----------------------------------------${NC}"
-    echo -e "${YELLOW}测试 7: 查询秒杀状态 GET /bitstorm/v3/get_sec_kill_info${NC}"
+    echo -e "${YELLOW}测试 8: 查询秒杀状态 GET /bitstorm/v3/get_sec_kill_info${NC}"
     echo -e "${YELLOW}----------------------------------------${NC}"
     
     if [ -n "$SEC_NUM" ]; then
@@ -385,13 +405,14 @@ show_usage() {
     echo -e "  ${YELLOW}help${NC}        显示此帮助信息"
     echo ""
     echo -e "${GREEN}测试的API接口:${NC}"
-    echo "  1. POST /login                        登录获取Token"
-    echo "  2. GET  /bitstorm/get_user_info       获取用户信息"
-    echo "  3. GET  /bitstorm/get_user_info_by_name  按用户名查询"
-    echo "  4. POST /bitstorm/v1/sec_kill         秒杀v1（数据库扣减）"
-    echo "  5. POST /bitstorm/v2/sec_kill         秒杀v2（Redis扣减）"
-    echo "  6. POST /bitstorm/v3/sec_kill         秒杀v3（异步消息队列）"
-    echo "  7. GET  /bitstorm/v3/get_sec_kill_info  查询秒杀状态"
+    echo "  1. POST /login                           登录获取Token"
+    echo "  2. GET  /get_user_info                   获取欢迎信息"
+    echo "  3. GET  /bitstorm/get_user_info          获取用户详细信息"
+    echo "  4. GET  /bitstorm/get_user_info_by_name  按用户名查询"
+    echo "  5. POST /bitstorm/v1/sec_kill            秒杀v1（数据库扣减）"
+    echo "  6. POST /bitstorm/v2/sec_kill            秒杀v2（Redis扣减）"
+    echo "  7. POST /bitstorm/v3/sec_kill            秒杀v3（异步消息队列）"
+    echo "  8. GET  /bitstorm/v3/get_sec_kill_info   查询秒杀状态"
     echo ""
     echo -e "${GREEN}服务端口:${NC}"
     echo "  user RPC      : 8669"

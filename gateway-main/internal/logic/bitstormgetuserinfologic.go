@@ -5,7 +5,6 @@ import (
 
 	"github.com/BitofferHub/gateway/internal/svc"
 	"github.com/BitofferHub/gateway/internal/types"
-	userv1 "github.com/BitofferHub/user/api/user/v1"
 
 	"github.com/zeromicro/go-zero/core/logx"
 )
@@ -25,12 +24,7 @@ func NewBitstormGetUserInfoLogic(ctx context.Context, svcCtx *svc.ServiceContext
 }
 
 func (l *BitstormGetUserInfoLogic) BitstormGetUserInfo() (resp *types.GetUserReply, err error) {
-	userID, err := currentUserID(l.ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	reply, err := l.svcCtx.UserClient.GetUser(rpcContext(l.ctx), &userv1.GetUserRequest{UserID: userID})
+	reply, err := fetchCurrentUser(l.ctx, l.svcCtx)
 	if err != nil {
 		return nil, err
 	}

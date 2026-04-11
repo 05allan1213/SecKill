@@ -3,8 +3,8 @@ package userlogic
 import (
 	"context"
 
-	"github.com/BitofferHub/user/internal/svc"
 	v1 "github.com/BitofferHub/user/api/user/v1"
+	"github.com/BitofferHub/user/internal/svc"
 
 	"github.com/zeromicro/go-zero/core/logx"
 )
@@ -24,5 +24,22 @@ func NewGetUserLogic(ctx context.Context, svcCtx *svc.ServiceContext) *GetUserLo
 }
 
 func (l *GetUserLogic) GetUser(in *v1.GetUserRequest) (*v1.GetUserReply, error) {
-	return l.svcCtx.UserService.GetUser(l.ctx, in)
+	userInfo, err := l.svcCtx.UserRepo.FindByID(l.ctx, l.svcCtx.Data, in.UserID)
+	if err != nil {
+		return nil, err
+	}
+	return &v1.GetUserReply{
+		Code:    0,
+		Message: "success",
+		Data: &v1.GetUserReplyData{
+			UserName: userInfo.UserName,
+			Pwd:      userInfo.Pwd,
+			Sex:      int32(userInfo.Sex),
+			Age:      int32(userInfo.Age),
+			Email:    userInfo.Email,
+			Contact:  userInfo.Contact,
+			Mobile:   userInfo.Mobile,
+			IdCard:   userInfo.IdCard,
+		},
+	}, nil
 }

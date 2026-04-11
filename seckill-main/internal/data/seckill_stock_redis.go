@@ -5,42 +5,21 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/BitofferHub/seckill/internal/biz"
 	"github.com/BitofferHub/seckill/internal/log"
-	"time"
 )
 
-type preSecKillStockRepo struct {
+type PreSecKillStockRepo struct {
 	data *Data
 }
 
-// NewSecKillStockRepo
-//
-//	@Author <a href="https://bitoffer.cn">狂飙训练营</a>
-//	@Description:
-//	@param data
-//	@return biz.SecKillStockRepo
-func NewPreSecKillStockRepo(data *Data) biz.PreSecKillStockRepo {
-	return &preSecKillStockRepo{
+func NewPreSecKillStockRepo(data *Data) *PreSecKillStockRepo {
+	return &PreSecKillStockRepo{
 		data: data,
 	}
 }
 
-// PreSecKillRecord is a PreSecKillRecord model.
-// in redis : secNum : json(PreSecKillRecord)
-type PreSecKillRecord struct {
-	SecNum     string //key
-	UserID     int64
-	GoodsID    int64
-	OrderNum   string
-	Price      float64
-	Status     int
-	CreateTime time.Time
-	ModifyTime time.Time
-}
-
-func (r *preSecKillStockRepo) PreDescStock(ctx context.Context, data *biz.Data,
-	userID int64, goodsID int64, num int32, secNum string, record *biz.PreSecKillRecord) (string, error) {
+func (r *PreSecKillStockRepo) PreDescStock(ctx context.Context, data *Data,
+	userID int64, goodsID int64, num int32, secNum string, record *PreSecKillRecord) (string, error) {
 	rdb := data.GetCache()
 	keys := make([]string, 0)
 	userIDStr := fmt.Sprintf("%d", userID)
@@ -72,8 +51,8 @@ func (r *preSecKillStockRepo) PreDescStock(ctx context.Context, data *biz.Data,
 	return secNum, err
 }
 
-func (r *preSecKillStockRepo) SetSuccessInPreSecKill(ctx context.Context, data *biz.Data,
-	userID int64, goodsID int64, secNum string, record *biz.PreSecKillRecord) (string, error) {
+func (r *PreSecKillStockRepo) SetSuccessInPreSecKill(ctx context.Context, data *Data,
+	userID int64, goodsID int64, secNum string, record *PreSecKillRecord) (string, error) {
 	rdb := data.GetCache()
 	keys := make([]string, 0)
 	userIDStr := fmt.Sprintf("%d", userID)
@@ -104,9 +83,9 @@ func (r *preSecKillStockRepo) SetSuccessInPreSecKill(ctx context.Context, data *
 	return secNum, err
 }
 
-func (r *preSecKillStockRepo) GetSecKillInfo(ctx context.Context, data *biz.Data, secNum string) (*biz.PreSecKillRecord, error) {
+func (r *PreSecKillStockRepo) GetSecKillInfo(ctx context.Context, data *Data, secNum string) (*PreSecKillRecord, error) {
 	rdb := data.GetCache()
-	var record = new(biz.PreSecKillRecord)
+	var record = new(PreSecKillRecord)
 	value, exist, err := rdb.Get(ctx, secNum)
 	if err != nil {
 		return record, err

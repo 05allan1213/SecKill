@@ -3,8 +3,10 @@ package userlogic
 import (
 	"context"
 
-	"github.com/BitofferHub/user/internal/svc"
 	v1 "github.com/BitofferHub/user/api/user/v1"
+	"github.com/BitofferHub/user/internal/data"
+	"github.com/BitofferHub/user/internal/log"
+	"github.com/BitofferHub/user/internal/svc"
 
 	"github.com/zeromicro/go-zero/core/logx"
 )
@@ -24,5 +26,19 @@ func NewCreateUserLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Create
 }
 
 func (l *CreateUserLogic) CreateUser(in *v1.CreateUserRequest) (*v1.CreateUserReply, error) {
-	return l.svcCtx.UserService.CreateUser(l.ctx, in)
+	log.InfoContextf(l.ctx, "create req username: %v", in.UserName)
+	_, err := l.svcCtx.UserRepo.Save(l.ctx, l.svcCtx.Data, &data.User{
+		UserName: in.UserName,
+		Pwd:      in.Pwd,
+		Sex:      int(in.Sex),
+		Age:      int(in.Age),
+		Email:    in.Email,
+		Contact:  in.Contact,
+		Mobile:   in.Mobile,
+		IdCard:   in.IdCard,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &v1.CreateUserReply{Message: "trytest"}, nil
 }

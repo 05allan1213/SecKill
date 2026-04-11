@@ -1,10 +1,8 @@
-package service
+package seckill
 
-import (
-	"fmt"
-)
+import "fmt"
 
-var (
+const (
 	SUCCESS                           = 0
 	ERR_INPUT_INVALID                 = 8020
 	ERR_SHOULD_BIND                   = 8021
@@ -36,8 +34,7 @@ var errMsgDic = map[int]string{
 	ERR_FIND_USER_QUOTA_FAILED:        "查询用户额度失败",
 }
 
-// GetErrMsg 获取错误描述
-func GetErrMsg(code int) string {
+func getErrMsg(code int) string {
 	if msg, ok := errMsgDic[code]; ok {
 		return msg
 	}

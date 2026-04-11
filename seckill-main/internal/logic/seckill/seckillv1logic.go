@@ -4,6 +4,7 @@ import (
 	"context"
 
 	pb "github.com/BitofferHub/seckill/api/sec_kill/proto"
+	"github.com/BitofferHub/seckill/internal/log"
 	"github.com/BitofferHub/seckill/internal/svc"
 	"github.com/zeromicro/go-zero/core/logx"
 )
@@ -23,5 +24,16 @@ func NewSecKillV1Logic(ctx context.Context, svcCtx *svc.ServiceContext) *SecKill
 }
 
 func (l *SecKillV1Logic) SecKillV1(req *pb.SecKillV1Request) (*pb.SecKillV1Reply, error) {
-	return l.svcCtx.SecKillService.SecKillV1(l.ctx, req)
+	goods, err := l.svcCtx.GoodsRepo.FindByNum(l.ctx, l.svcCtx.Data, req.GoodsNum)
+	if err != nil {
+		log.ErrorContextf(l.ctx, "GetGoodsInfo err %s\n", err.Error())
+		return nil, err
+	}
+
+	orderNum, code, err := secKillInStore(l.ctx, l.svcCtx, goods, "", req.UserID, int(req.Num))
+	if err != nil {
+		log.ErrorContextf(l.ctx, "secKillInStore err %s\n", err.Error())
+		return buildV1Reply("", code), nil
+	}
+	return buildV1Reply(orderNum, code), nil
 }

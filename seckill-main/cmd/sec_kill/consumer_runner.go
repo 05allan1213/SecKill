@@ -6,6 +6,7 @@ import (
 	"time"
 
 	bitlog "github.com/BitofferHub/seckill/internal/log"
+	seckilllogic "github.com/BitofferHub/seckill/internal/logic/seckill"
 	"github.com/BitofferHub/seckill/internal/svc"
 )
 
@@ -37,7 +38,7 @@ func (r *ConsumerRunner) Start() error {
 			return
 		}
 		consumer.ConsumeMessages(r.ctx, func(ctx context.Context, message []byte) error {
-			return r.svcCtx.SecKillService.HandleConsumedMessage(ctx, message)
+			return seckilllogic.HandleConsumedMessage(ctx, r.svcCtx, message)
 		})
 	}()
 

@@ -4,70 +4,32 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/BitofferHub/seckill/internal/biz"
 	"github.com/BitofferHub/seckill/internal/log"
 	"gorm.io/gorm"
 )
 
-type secKillStockRepo struct {
+type SecKillStockRepo struct {
 	data *Data
 }
 
-// NewSecKillStockRepo
-//
-//	@Author <a href="https://bitoffer.cn">狂飙训练营</a>
-//	@Description:
-//	@param data
-//	@return biz.SecKillStockRepo
-func NewSecKillStockRepo(data *Data) biz.SecKillStockRepo {
-	return &secKillStockRepo{
+func NewSecKillStockRepo(data *Data) *SecKillStockRepo {
+	return &SecKillStockRepo{
 		data: data,
 	}
 }
 
-// Save
-//
-//	@Author <a href="https://bitoffer.cn">狂飙训练营</a>
-//	@Description:
-//	@Receiver r
-//	@param ctx
-//	@param data
-//	@param g
-//	@return *biz.SecKillStock
-//	@return error
-func (r *secKillStockRepo) Save(ctx context.Context, data *biz.Data, g *biz.SecKillStock) (*biz.SecKillStock, error) {
+func (r *SecKillStockRepo) Save(ctx context.Context, data *Data, g *SecKillStock) (*SecKillStock, error) {
 	err := data.GetDB().WithContext(ctx).Create(g).Error
 	return g, err
 }
 
-// Update
-//
-//	@Author <a href="https://bitoffer.cn">狂飙训练营</a>
-//	@Description:
-//	@Receiver r
-//	@param ctx
-//	@param data
-//	@param g
-//	@return *biz.SecKillStock
-//	@return error
-func (r *secKillStockRepo) Update(ctx context.Context, data *biz.Data, g *biz.SecKillStock) (*biz.SecKillStock, error) {
+func (r *SecKillStockRepo) Update(ctx context.Context, data *Data, g *SecKillStock) (*SecKillStock, error) {
 	return nil, nil
 }
 
-// FindByIDWithCache
-//
-//	@Author <a href="https://bitoffer.cn">狂飙训练营</a>
-//	@Description:
-//	@Receiver r
-//	@param ctx
-//	@param data
-//	@param secKillID
-//	@return *biz.SecKillStock
-//	@return error
-func (r *secKillStockRepo) FindByIDWithCache(ctx context.Context, data *biz.Data,
-	secKillID int64) (*biz.SecKillStock, error) {
+func (r *SecKillStockRepo) FindByIDWithCache(ctx context.Context, data *Data, secKillID int64) (*SecKillStock, error) {
 	cacheKey := fmt.Sprintf("secKillinfo:%d", secKillID)
-	var secKill = new(biz.SecKillStock)
+	var secKill = new(SecKillStock)
 	rdbSecKillStockInfo, exist, err := data.GetCache().Get(ctx, cacheKey)
 	if err == nil && exist {
 		err = json.Unmarshal([]byte(rdbSecKillStockInfo), secKill)
@@ -89,18 +51,8 @@ func (r *secKillStockRepo) FindByIDWithCache(ctx context.Context, data *biz.Data
 	return secKill, nil
 }
 
-// FindByID
-//
-//	@Author <a href="https://bitoffer.cn">狂飙训练营</a>
-//	@Description:
-//	@Receiver r
-//	@param ctx
-//	@param data
-//	@param secKillID
-//	@return *biz.SecKillStock
-//	@return error
-func (r *secKillStockRepo) FindByID(ctx context.Context, data *biz.Data, secKillID int64) (*biz.SecKillStock, error) {
-	var secKill biz.SecKillStock
+func (r *SecKillStockRepo) FindByID(ctx context.Context, data *Data, secKillID int64) (*SecKillStock, error) {
+	var secKill SecKillStock
 	err := data.GetDB().WithContext(ctx).Where("id = ?", secKillID).First(&secKill).Error
 	if err != nil {
 		return nil, err
@@ -108,8 +60,8 @@ func (r *secKillStockRepo) FindByID(ctx context.Context, data *biz.Data, secKill
 	return &secKill, nil
 }
 
-func (r *secKillStockRepo) DescStock(ctx context.Context, data *biz.Data, goodsID int64, num int32) (int64, error) {
-	var stock biz.SecKillStock
+func (r *SecKillStockRepo) DescStock(ctx context.Context, data *Data, goodsID int64, num int32) (int64, error) {
+	var stock SecKillStock
 	db := data.GetDB()
 	db = db.WithContext(ctx).Table(stock.TableName()).
 		Where("goods_id = ? and stock >= ?", goodsID, num).
@@ -121,8 +73,8 @@ func (r *secKillStockRepo) DescStock(ctx context.Context, data *biz.Data, goodsI
 	return db.RowsAffected, err
 }
 
-func (r *secKillStockRepo) RebackStock(ctx context.Context, data *biz.Data, goodsID int64, num int32) (int64, error) {
-	var stock biz.SecKillStock
+func (r *SecKillStockRepo) RebackStock(ctx context.Context, data *Data, goodsID int64, num int32) (int64, error) {
+	var stock SecKillStock
 	db := data.GetDB()
 	err := db.Table(stock.TableName()).WithContext(ctx).Update("stock", gorm.Expr("stock + ?", num)).
 		Where("goods_id= ?", goodsID).Error
@@ -132,15 +84,6 @@ func (r *secKillStockRepo) RebackStock(ctx context.Context, data *biz.Data, good
 	return db.RowsAffected, err
 }
 
-// ListAll
-//
-//	@Author <a href="https://bitoffer.cn">狂飙训练营</a>
-//	@Description:
-//	@Receiver r
-//	@param ctx
-//	@param data
-//	@return []*biz.SecKillStock
-//	@return error
-func (r *secKillStockRepo) ListAll(ctx context.Context, data *biz.Data) ([]*biz.SecKillStock, error) {
+func (r *SecKillStockRepo) ListAll(ctx context.Context, data *Data) ([]*SecKillStock, error) {
 	return nil, nil
 }

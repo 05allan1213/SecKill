@@ -25,19 +25,20 @@ func NewBitstormSecKillV2Logic(ctx context.Context, svcCtx *svc.ServiceContext) 
 }
 
 func (l *BitstormSecKillV2Logic) BitstormSecKillV2(req *types.SecKillRequest) (resp *types.SecKillV2Reply, err error) {
-	userID, err := currentUserID(l.ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	reply, err := l.svcCtx.SeckillClient.SecKillV2(rpcContext(l.ctx), &secproto.SecKillV2Request{
-		UserID:   userID,
-		GoodsNum: req.GoodsNum,
-		Num:      req.Num,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return mapSecKillV2Reply(reply), nil
+	return runSecKill(
+		l.ctx,
+		l.svcCtx,
+		req,
+		func(userID int64, req *types.SecKillRequest) *secproto.SecKillV2Request {
+			return &secproto.SecKillV2Request{
+				UserID:   userID,
+				GoodsNum: req.GoodsNum,
+				Num:      req.Num,
+			}
+		},
+		func(ctx context.Context, req *secproto.SecKillV2Request) (*secproto.SecKillV2Reply, error) {
+			return l.svcCtx.SeckillClient.SecKillV2(ctx, req)
+		},
+		mapSecKillV2Reply,
+	)
 }

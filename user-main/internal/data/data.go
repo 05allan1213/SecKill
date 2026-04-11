@@ -1,6 +1,7 @@
 package data
 
 import (
+	"context"
 	"fmt"
 	"github.com/BitofferHub/pkg/middlewares/cache"
 	cfg "github.com/BitofferHub/user/internal/config"
@@ -29,6 +30,25 @@ func (p *Data) GetDB() *gorm.DB {
 
 func (p *Data) GetCache() *cache.Client {
 	return p.rdb
+}
+
+func (p *Data) CloneWithDB(db *gorm.DB) *Data {
+	if db == nil {
+		db = p.db
+	}
+	return &Data{
+		db:  db,
+		rdb: p.rdb,
+	}
+}
+
+func (p *Data) RunInTx(ctx context.Context, fn func(txData *Data) error) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	return p.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		return fn(p.CloneWithDB(tx))
+	})
 }
 
 func NewDataFromConfig(dt cfg.DataConf) (*Data, error) {

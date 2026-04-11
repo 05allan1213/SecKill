@@ -4,69 +4,32 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/BitofferHub/user/internal/biz"
 	"github.com/BitofferHub/user/internal/log"
+	"time"
 )
 
-type userRepo struct {
+type UserRepo struct {
 	data *Data
 }
 
-// NewUserRepo
-//
-//	@Author <a href="https://bitoffer.cn">狂飙训练营</a>
-//	@Description:
-//	@param data
-//	@return biz.UserRepo
-func NewUserRepo(data *Data) biz.UserRepo {
-	return &userRepo{
+func NewUserRepo(data *Data) *UserRepo {
+	return &UserRepo{
 		data: data,
 	}
 }
 
-// Save
-//
-//	@Author <a href="https://bitoffer.cn">狂飙训练营</a>
-//	@Description:
-//	@Receiver r
-//	@param ctx
-//	@param data
-//	@param g
-//	@return *biz.User
-//	@return error
-func (r *userRepo) Save(ctx context.Context, data *biz.Data, g *biz.User) (*biz.User, error) {
+func (r *UserRepo) Save(ctx context.Context, data *Data, g *User) (*User, error) {
 	err := data.GetDB().WithContext(ctx).Create(g).Error
 	return g, err
 }
 
-// Update
-//
-//	@Author <a href="https://bitoffer.cn">狂飙训练营</a>
-//	@Description:
-//	@Receiver r
-//	@param ctx
-//	@param data
-//	@param g
-//	@return *biz.User
-//	@return error
-func (r *userRepo) Update(ctx context.Context, data *biz.Data, g *biz.User) (*biz.User, error) {
+func (r *UserRepo) Update(ctx context.Context, data *Data, g *User) (*User, error) {
 	return nil, nil
 }
 
-// FindByIDWithCache
-//
-//	@Author <a href="https://bitoffer.cn">狂飙训练营</a>
-//	@Description:
-//	@Receiver r
-//	@param ctx
-//	@param data
-//	@param userID
-//	@return *biz.User
-//	@return error
-func (r *userRepo) FindByIDWithCache(ctx context.Context, data *biz.Data,
-	userID int64) (*biz.User, error) {
+func (r *UserRepo) FindByIDWithCache(ctx context.Context, data *Data, userID int64) (*User, error) {
 	cacheKey := fmt.Sprintf("userinfo:%d", userID)
-	var user = new(biz.User)
+	var user = new(User)
 	rdbUserInfo, exist, err := data.GetCache().Get(ctx, cacheKey)
 	if err == nil && exist {
 		err = json.Unmarshal([]byte(rdbUserInfo), user)
@@ -79,8 +42,8 @@ func (r *userRepo) FindByIDWithCache(ctx context.Context, data *biz.Data,
 		return nil, err
 	}
 	userStr, _ := json.Marshal(user)
-	if userStr != nil && len(userStr) != 0 {
-		err = data.GetCache().Set(ctx, cacheKey, string(userStr), 10)
+	if len(userStr) != 0 {
+		err = data.GetCache().Set(ctx, cacheKey, string(userStr), 10*time.Second)
 		if err != nil {
 			log.InfoContextf(ctx, "set user cacheKey err %s", err.Error())
 		}
@@ -88,18 +51,8 @@ func (r *userRepo) FindByIDWithCache(ctx context.Context, data *biz.Data,
 	return user, nil
 }
 
-// FindByID
-//
-//	@Author <a href="https://bitoffer.cn">狂飙训练营</a>
-//	@Description:
-//	@Receiver r
-//	@param ctx
-//	@param data
-//	@param userID
-//	@return *biz.User
-//	@return error
-func (r *userRepo) FindByID(ctx context.Context, data *biz.Data, userID int64) (*biz.User, error) {
-	var user biz.User
+func (r *UserRepo) FindByID(ctx context.Context, data *Data, userID int64) (*User, error) {
+	var user User
 	err := data.GetDB().WithContext(ctx).Where("id = ?", userID).First(&user).Error
 	if err != nil {
 		return nil, err
@@ -107,18 +60,8 @@ func (r *userRepo) FindByID(ctx context.Context, data *biz.Data, userID int64) (
 	return &user, nil
 }
 
-// FindByName
-//
-//	@Author <a href="https://bitoffer.cn">狂飙训练营</a>
-//	@Description:
-//	@Receiver r
-//	@param ctx
-//	@param data
-//	@param userName
-//	@return *biz.User
-//	@return error
-func (r *userRepo) FindByName(ctx context.Context, data *biz.Data, userName string) (*biz.User, error) {
-	var user biz.User
+func (r *UserRepo) FindByName(ctx context.Context, data *Data, userName string) (*User, error) {
+	var user User
 	err := data.GetDB().WithContext(ctx).Where("user_name = ?", userName).First(&user).Error
 	if err != nil {
 		return nil, err
@@ -126,15 +69,6 @@ func (r *userRepo) FindByName(ctx context.Context, data *biz.Data, userName stri
 	return &user, nil
 }
 
-// ListAll
-//
-//	@Author <a href="https://bitoffer.cn">狂飙训练营</a>
-//	@Description:
-//	@Receiver r
-//	@param ctx
-//	@param data
-//	@return []*biz.User
-//	@return error
-func (r *userRepo) ListAll(ctx context.Context, data *biz.Data) ([]*biz.User, error) {
+func (r *UserRepo) ListAll(ctx context.Context, data *Data) ([]*User, error) {
 	return nil, nil
 }

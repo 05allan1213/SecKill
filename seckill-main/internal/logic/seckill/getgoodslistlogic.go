@@ -4,6 +4,7 @@ import (
 	"context"
 
 	pb "github.com/BitofferHub/seckill/api/sec_kill/proto"
+	"github.com/BitofferHub/seckill/internal/log"
 	"github.com/BitofferHub/seckill/internal/svc"
 	"github.com/zeromicro/go-zero/core/logx"
 )
@@ -23,5 +24,20 @@ func NewGetGoodsListLogic(ctx context.Context, svcCtx *svc.ServiceContext) *GetG
 }
 
 func (l *GetGoodsListLogic) GetGoodsList(req *pb.GetGoodsListRequest) (*pb.GetGoodsListReply, error) {
-	return l.svcCtx.SecKillService.GetGoodsList(l.ctx, req)
+	reply := new(pb.GetGoodsListReply)
+	goodsList, err := l.svcCtx.GoodsRepo.GetGoodsList(l.ctx, l.svcCtx.Data, int(req.Offset), int(req.Limit))
+	if err != nil {
+		log.ErrorContextf(l.ctx, "get secinfo by secnum err %s\n", err.Error())
+		return nil, err
+	}
+
+	reply.Data = &pb.GetGoodsListReplyData{
+		GoodsList: make([]*pb.GoodInfo, 0, len(goodsList)),
+	}
+	for _, goods := range goodsList {
+		info := new(pb.GoodInfo)
+		convertDataGoodsToPbGoods(goods, info)
+		reply.Data.GoodsList = append(reply.Data.GoodsList, info)
+	}
+	return reply, nil
 }

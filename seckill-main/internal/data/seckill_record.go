@@ -4,69 +4,31 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/BitofferHub/seckill/internal/biz"
 	"github.com/BitofferHub/seckill/internal/log"
 )
 
-type secKillRecordRepo struct {
+type SecKillRecordRepo struct {
 	data *Data
 }
 
-// NewSecKillRecordRepo
-//
-//	@Author <a href="https://bitoffer.cn">狂飙训练营</a>
-//	@Description:
-//	@param data
-//	@return biz.SecKillRecordRepo
-func NewSecKillRecordRepo(data *Data) biz.SecKillRecordRepo {
-	return &secKillRecordRepo{
+func NewSecKillRecordRepo(data *Data) *SecKillRecordRepo {
+	return &SecKillRecordRepo{
 		data: data,
 	}
 }
 
-// Save
-//
-//	@Author <a href="https://bitoffer.cn">狂飙训练营</a>
-//	@Description:
-//	@Receiver r
-//	@param ctx
-//	@param data
-//	@param g
-//	@return *biz.SecKillRecord
-//	@return error
-func (r *secKillRecordRepo) Save(ctx context.Context, data *biz.Data, g *biz.SecKillRecord) (*biz.SecKillRecord, error) {
+func (r *SecKillRecordRepo) Save(ctx context.Context, data *Data, g *SecKillRecord) (*SecKillRecord, error) {
 	err := data.GetDB().WithContext(ctx).Create(g).Error
 	return g, err
 }
 
-// Update
-//
-//	@Author <a href="https://bitoffer.cn">狂飙训练营</a>
-//	@Description:
-//	@Receiver r
-//	@param ctx
-//	@param data
-//	@param g
-//	@return *biz.SecKillRecord
-//	@return error
-func (r *secKillRecordRepo) Update(ctx context.Context, data *biz.Data, g *biz.SecKillRecord) (*biz.SecKillRecord, error) {
+func (r *SecKillRecordRepo) Update(ctx context.Context, data *Data, g *SecKillRecord) (*SecKillRecord, error) {
 	return nil, nil
 }
 
-// FindByIDWithCache
-//
-//	@Author <a href="https://bitoffer.cn">狂飙训练营</a>
-//	@Description:
-//	@Receiver r
-//	@param ctx
-//	@param data
-//	@param secKillID
-//	@return *biz.SecKillRecord
-//	@return error
-func (r *secKillRecordRepo) FindByIDWithCache(ctx context.Context, data *biz.Data,
-	secKillID int64) (*biz.SecKillRecord, error) {
+func (r *SecKillRecordRepo) FindByIDWithCache(ctx context.Context, data *Data, secKillID int64) (*SecKillRecord, error) {
 	cacheKey := fmt.Sprintf("secKillinfo:%d", secKillID)
-	var secKill = new(biz.SecKillRecord)
+	var secKill = new(SecKillRecord)
 	rdbSecKillRecordInfo, exist, err := data.GetCache().Get(ctx, cacheKey)
 	if err == nil && exist {
 		err = json.Unmarshal([]byte(rdbSecKillRecordInfo), secKill)
@@ -88,18 +50,8 @@ func (r *secKillRecordRepo) FindByIDWithCache(ctx context.Context, data *biz.Dat
 	return secKill, nil
 }
 
-// FindByID
-//
-//	@Author <a href="https://bitoffer.cn">狂飙训练营</a>
-//	@Description:
-//	@Receiver r
-//	@param ctx
-//	@param data
-//	@param secKillID
-//	@return *biz.SecKillRecord
-//	@return error
-func (r *secKillRecordRepo) FindByID(ctx context.Context, data *biz.Data, secKillID int64) (*biz.SecKillRecord, error) {
-	var secKill biz.SecKillRecord
+func (r *SecKillRecordRepo) FindByID(ctx context.Context, data *Data, secKillID int64) (*SecKillRecord, error) {
+	var secKill SecKillRecord
 	err := data.GetDB().WithContext(ctx).Where("id = ?", secKillID).First(&secKill).Error
 	if err != nil {
 		return nil, err
@@ -107,22 +59,13 @@ func (r *secKillRecordRepo) FindByID(ctx context.Context, data *biz.Data, secKil
 	return &secKill, nil
 }
 
-func (r *secKillRecordRepo) OutOfTime(ctx context.Context, data *biz.Data, orderID string) (int64, error) {
+func (r *SecKillRecordRepo) OutOfTime(ctx context.Context, data *Data, orderID string) (int64, error) {
 	db := data.GetDB()
-	err := db.WithContext(ctx).Update("status", int(biz.SK_STATUS_OOT)).
-		Where("order_id = ? and status = ?", orderID, int(biz.SK_STATUS_BEFORE_PAY)).Error
+	err := db.WithContext(ctx).Update("status", int(SK_STATUS_OOT)).
+		Where("order_id = ? and status = ?", orderID, int(SK_STATUS_BEFORE_PAY)).Error
 	return db.RowsAffected, err
 }
 
-// ListAll
-//
-//	@Author <a href="https://bitoffer.cn">狂飙训练营</a>
-//	@Description:
-//	@Receiver r
-//	@param ctx
-//	@param data
-//	@return []*biz.SecKillRecord
-//	@return error
-func (r *secKillRecordRepo) ListAll(ctx context.Context, data *biz.Data) ([]*biz.SecKillRecord, error) {
+func (r *SecKillRecordRepo) ListAll(ctx context.Context, data *Data) ([]*SecKillRecord, error) {
 	return nil, nil
 }
