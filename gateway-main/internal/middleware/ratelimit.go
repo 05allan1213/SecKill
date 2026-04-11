@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"net/http"
+	"time"
 
 	gwlog "github.com/BitofferHub/gateway/internal/log"
 	"github.com/BitofferHub/gateway/internal/svc"
@@ -37,7 +38,7 @@ func (m *RouteLimitMiddleware) Handle(next http.HandlerFunc) http.HandlerFunc {
 			RecordAccessCode(r.Context(), rateLimitCode)
 			RecordAccessError(r.Context(), NewAccessError("rate limited"))
 			RecordAccessResponse(r.Context(), payload)
-			gwlog.Warn(r.Context(), "rate limit rejected",
+			gwlog.WarnEvery(r.Context(), "gateway.rate_limit.rejected", 2*time.Second, "rate limit rejected",
 				gwlog.Field(gwlog.FieldAction, "rate_limit"),
 				gwlog.Field(gwlog.FieldPath, r.URL.Path),
 				gwlog.Field(gwlog.FieldRouteKey, m.routeKey),

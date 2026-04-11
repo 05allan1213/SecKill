@@ -7,16 +7,9 @@ import (
 )
 
 type ServiceContext struct {
-	Config        config.Config
-	Data          *data.Data
-	StockRepo     *data.SecKillStockRepo
-	PreStockRepo  *data.PreSecKillStockRepo
-	RecordRepo    *data.SecKillRecordRepo
-	GoodsRepo     *data.GoodsRepo
-	OrderRepo     *data.OrderRepo
-	MessageRepo   *data.SecKillMsgRepo
-	QuotaRepo     *data.QuotaRepo
-	UserQuotaRepo *data.UserQuotaRepo
+	Config config.Config
+	Data   *data.Data
+	*data.Repositories
 }
 
 func NewServiceContext(c config.Config) *ServiceContext {
@@ -28,15 +21,8 @@ func NewServiceContext(c config.Config) *ServiceContext {
 	}
 
 	return &ServiceContext{
-		Config:        c,
-		Data:          dataLayer,
-		StockRepo:     data.NewSecKillStockRepo(dataLayer),
-		PreStockRepo:  data.NewPreSecKillStockRepo(dataLayer),
-		RecordRepo:    data.NewSecKillRecordRepo(dataLayer),
-		GoodsRepo:     data.NewGoodsRepo(dataLayer),
-		OrderRepo:     data.NewOrderRepo(dataLayer),
-		MessageRepo:   data.NewSecKillMsgRepo(dataLayer),
-		QuotaRepo:     data.NewQuotaRepo(dataLayer),
-		UserQuotaRepo: data.NewUserQuotaRepo(dataLayer),
+		Config:       c,
+		Data:         dataLayer,
+		Repositories: data.NewRepositories(dataLayer),
 	}
 }

@@ -25,6 +25,7 @@ func main() {
 
 	var c config.Config
 	conf.MustLoad(*configFile, &c)
+	gwlog.Init("./log/")
 
 	gwlog.Info(nil, "gateway starting",
 		gwlog.Field(gwlog.FieldAction, "gateway.start"),

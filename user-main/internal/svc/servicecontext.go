@@ -7,9 +7,9 @@ import (
 )
 
 type ServiceContext struct {
-	Config   config.Config
-	Data     *data.Data
-	UserRepo *data.UserRepo
+	Config config.Config
+	Data   *data.Data
+	*data.Repositories
 }
 
 func NewServiceContext(c config.Config) *ServiceContext {
@@ -21,8 +21,8 @@ func NewServiceContext(c config.Config) *ServiceContext {
 	}
 
 	return &ServiceContext{
-		Config:   c,
-		Data:     dataLayer,
-		UserRepo: data.NewUserRepo(dataLayer),
+		Config:       c,
+		Data:         dataLayer,
+		Repositories: data.NewRepositories(dataLayer),
 	}
 }

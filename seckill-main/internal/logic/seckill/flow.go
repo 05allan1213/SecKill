@@ -38,7 +38,7 @@ func HandleConsumedMessage(ctx context.Context, svcCtx *svc.ServiceContext, mess
 		log.Field(log.FieldSecNum, skMsg.SecNum),
 	)
 
-	log.Info(ctx, "consume seckill message", log.Field(log.FieldAction, "seckill.mq.consume"))
+	log.InfoEvery(ctx, "seckill.mq.consume.start", 2*time.Second, "consume seckill message", log.Field(log.FieldAction, "seckill.mq.consume"))
 	orderNum, code, err := secKillInStore(ctx, svcCtx, skMsg.Goods, skMsg.SecNum, skMsg.UserID, skMsg.Num)
 	if err != nil || code != SUCCESS {
 		if code == SUCCESS {
@@ -54,7 +54,7 @@ func HandleConsumedMessage(ctx context.Context, svcCtx *svc.ServiceContext, mess
 				log.Field("resultCode", code),
 			)
 		} else {
-			log.Warn(ctx, "seckill store rejected",
+			log.WarnEvery(ctx, "seckill.mq.consume.reject", 2*time.Second, "seckill store rejected",
 				log.Field(log.FieldAction, "seckill.mq.consume"),
 				log.Field("resultCode", code),
 			)
@@ -64,7 +64,7 @@ func HandleConsumedMessage(ctx context.Context, svcCtx *svc.ServiceContext, mess
 	if err := markPreSecKillSuccess(ctx, svcCtx, skMsg.Goods, skMsg.UserID, skMsg.SecNum, orderNum); err != nil {
 		return err
 	}
-	log.Info(ctx, "consume seckill message finished",
+	log.InfoEvery(ctx, "seckill.mq.consume.finish", 2*time.Second, "consume seckill message finished",
 		log.Field(log.FieldAction, "seckill.mq.consume"),
 		log.Field(log.FieldOrderNum, orderNum),
 	)
@@ -131,7 +131,7 @@ func secKillInStore(ctx context.Context, svcCtx *svc.ServiceContext, goods *data
 		if quotaEnabled {
 			leftQuota := userQuotaNum - userKilledNum
 			if int(leftQuota) < num {
-				log.Warn(ctx, "user quota not enough", log.Field("leftQuota", leftQuota))
+				log.WarnEvery(ctx, "seckill.store.quota_not_enough", 2*time.Second, "user quota not enough", log.Field("leftQuota", leftQuota))
 				code = ERR_USER_QUOTA_NOT_ENOUGH
 				return nil
 			}
@@ -165,7 +165,7 @@ func secKillInStore(ctx context.Context, svcCtx *svc.ServiceContext, goods *data
 			return err
 		}
 		if rowAffected == 0 {
-			log.Warn(ctx, "goods stock not enough")
+			log.WarnEvery(ctx, "seckill.store.stock_not_enough", 2*time.Second, "goods stock not enough")
 			code = ERR_GOODS_STOCK_NOT_ENOUGH
 			return nil
 		}
@@ -203,7 +203,7 @@ func secKillInStore(ctx context.Context, svcCtx *svc.ServiceContext, goods *data
 		return orderNum, code, err
 	}
 	if code == SUCCESS {
-		log.Info(ctx, "seckill store succeeded", log.Field(log.FieldOrderNum, orderNum))
+		log.InfoEvery(ctx, "seckill.store.succeeded", 2*time.Second, "seckill store succeeded", log.Field(log.FieldOrderNum, orderNum))
 	}
 	return orderNum, code, nil
 }

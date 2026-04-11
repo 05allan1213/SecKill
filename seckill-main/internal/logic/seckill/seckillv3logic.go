@@ -2,6 +2,7 @@ package seckill
 
 import (
 	"context"
+	"time"
 
 	pb "github.com/BitofferHub/seckill/api/sec_kill/proto"
 	"github.com/BitofferHub/seckill/internal/data"
@@ -43,10 +44,10 @@ func (l *SecKillV3Logic) SecKillV3(req *pb.SecKillV3Request) (*pb.SecKillV3Reply
 	if err != nil {
 		code := codeFromPreDescError(err)
 		if code == ERR_DUPLICATE_SECKILL {
-			log.Warn(l.ctx, "duplicate seckill request", log.Field(log.FieldSecNum, alreadySecNum))
+			log.WarnEvery(l.ctx, "seckill.v3.duplicate", 2*time.Second, "duplicate seckill request", log.Field(log.FieldSecNum, alreadySecNum))
 			return buildV3Reply(alreadySecNum, code), nil
 		}
-		log.Warn(l.ctx, "pre-desc stock failed", log.Field(log.FieldError, err.Error()))
+		log.WarnEvery(l.ctx, "seckill.v3.pre_desc_failed", 2*time.Second, "pre-desc stock failed", log.Field(log.FieldError, err.Error()))
 		return buildV3Reply("", code), nil
 	}
 

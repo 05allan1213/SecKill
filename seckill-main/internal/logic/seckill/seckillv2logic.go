@@ -2,6 +2,7 @@ package seckill
 
 import (
 	"context"
+	"time"
 
 	pb "github.com/BitofferHub/seckill/api/sec_kill/proto"
 	"github.com/BitofferHub/seckill/internal/log"
@@ -40,7 +41,7 @@ func (l *SecKillV2Logic) SecKillV2(req *pb.SecKillV2Request) (*pb.SecKillV2Reply
 	secNum := record.SecNum
 	_, err = l.svcCtx.PreStockRepo.PreDescStock(l.ctx, l.svcCtx.Data, req.UserID, goods.ID, req.Num, secNum, record)
 	if err != nil {
-		log.Warn(l.ctx, "pre-desc stock failed", log.Field(log.FieldError, err.Error()))
+		log.WarnEvery(l.ctx, "seckill.v2.pre_desc_failed", 2*time.Second, "pre-desc stock failed", log.Field(log.FieldError, err.Error()))
 		return buildV2Reply("", codeFromPreDescError(err)), nil
 	}
 

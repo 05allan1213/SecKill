@@ -66,7 +66,7 @@ func (r *RateLimiter) Allow(ctx context.Context, url string) (*Result, error) {
 	result := &Result{}
 
 	if err != nil {
-		gwlog.Warn(ctx, "rate limiter redis fallback",
+		gwlog.WarnEvery(ctx, "gateway.rate_limit.redis_fallback", 5*time.Second, "rate limiter redis fallback",
 			gwlog.Field(gwlog.FieldAction, "rate_limit.redis_fallback"),
 			gwlog.Field(gwlog.FieldRouteKey, url),
 			gwlog.Field(gwlog.FieldError, err.Error()),
@@ -75,7 +75,7 @@ func (r *RateLimiter) Allow(ctx context.Context, url string) (*Result, error) {
 		localLimit := localRouteLimits[url]
 		if localLimit == nil {
 			// 如果限流器不存在，直接通过
-			gwlog.Warn(ctx, "local rate limiter missing",
+			gwlog.WarnEvery(ctx, "gateway.rate_limit.local_missing", 5*time.Second, "local rate limiter missing",
 				gwlog.Field(gwlog.FieldAction, "rate_limit.local_missing"),
 				gwlog.Field(gwlog.FieldRouteKey, url),
 			)

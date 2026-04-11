@@ -2,6 +2,10 @@ package log
 
 import (
 	"context"
+	"fmt"
+	"os"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/zeromicro/go-zero/core/logx"
@@ -31,7 +35,11 @@ const (
 	FieldRequest  = "request"
 	FieldResponse = "response"
 	FieldRouteKey = "routeKey"
+	FieldRows     = "rows"
+	FieldSQL      = "sql"
 )
+
+var sampledLogs sync.Map
 
 type AccessEntry struct {
 	Action   string
@@ -43,6 +51,12 @@ type AccessEntry struct {
 	Response any
 	Err      error
 	Cost     time.Duration
+}
+
+func Init(logPath string) {
+	if logPath != "" {
+		_ = os.MkdirAll(logPath, 0o755)
+	}
 }
 
 func Field(key string, value any) LogField {
@@ -90,6 +104,38 @@ func Error(ctx context.Context, msg string, fields ...LogField) {
 	logger(ctx).Errorw(msg, fields...)
 }
 
+func InfoEvery(ctx context.Context, key string, interval time.Duration, msg string, fields ...LogField) {
+	if shouldLog(key, interval) {
+		Info(ctx, msg, fields...)
+	}
+}
+
+func WarnEvery(ctx context.Context, key string, interval time.Duration, msg string, fields ...LogField) {
+	if shouldLog(key, interval) {
+		Warn(ctx, msg, fields...)
+	}
+}
+
+func InfoContextf(ctx context.Context, format string, v ...interface{}) {
+	Info(ctx, fmt.Sprintf(format, v...))
+}
+
+func WarnContextf(ctx context.Context, format string, v ...interface{}) {
+	Warn(ctx, fmt.Sprintf(format, v...))
+}
+
+func ErrorContextf(ctx context.Context, format string, v ...interface{}) {
+	Error(ctx, fmt.Sprintf(format, v...))
+}
+
+func Infof(format string, v ...interface{}) {
+	logx.Infow(fmt.Sprintf(format, v...))
+}
+
+func Errorf(format string, v ...interface{}) {
+	logx.Errorw(fmt.Sprintf(format, v...))
+}
+
 func Access(ctx context.Context, detail string, entry AccessEntry) {
 	fields := make([]LogField, 0, 8)
 	if entry.Action != "" {
@@ -135,4 +181,18 @@ func logger(ctx context.Context) logx.Logger {
 		ctx = context.Background()
 	}
 	return logx.WithContext(ctx).WithCallerSkip(1)
+}
+
+func shouldLog(key string, interval time.Duration) bool {
+	if key == "" || interval <= 0 {
+		return true
+	}
+	now := time.Now().UnixNano()
+	value, _ := sampledLogs.LoadOrStore(key, &atomic.Int64{})
+	last := value.(*atomic.Int64)
+	prev := last.Load()
+	if prev != 0 && now-prev < interval.Nanoseconds() {
+		return false
+	}
+	return last.CompareAndSwap(prev, now)
 }

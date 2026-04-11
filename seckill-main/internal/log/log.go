@@ -5,6 +5,8 @@ import (
 	stderrors "errors"
 	"fmt"
 	"os"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/zeromicro/go-zero/core/logx"
@@ -42,7 +44,10 @@ const (
 	FieldResponse = "response"
 	FieldRows     = "rows"
 	FieldSQL      = "sql"
+	FieldRouteKey = "routeKey"
 )
+
+var sampledLogs sync.Map
 
 type AccessEntry struct {
 	Action   string
@@ -105,6 +110,18 @@ func Warn(ctx context.Context, msg string, fields ...LogField) {
 
 func Error(ctx context.Context, msg string, fields ...LogField) {
 	logger(ctx).Errorw(msg, fields...)
+}
+
+func InfoEvery(ctx context.Context, key string, interval time.Duration, msg string, fields ...LogField) {
+	if shouldLog(key, interval) {
+		Info(ctx, msg, fields...)
+	}
+}
+
+func WarnEvery(ctx context.Context, key string, interval time.Duration, msg string, fields ...LogField) {
+	if shouldLog(key, interval) {
+		Warn(ctx, msg, fields...)
+	}
 }
 
 func InfoContextf(ctx context.Context, format string, v ...interface{}) {
@@ -243,4 +260,18 @@ func logger(ctx context.Context) logx.Logger {
 		ctx = context.Background()
 	}
 	return logx.WithContext(ctx).WithCallerSkip(1)
+}
+
+func shouldLog(key string, interval time.Duration) bool {
+	if key == "" || interval <= 0 {
+		return true
+	}
+	now := time.Now().UnixNano()
+	value, _ := sampledLogs.LoadOrStore(key, &atomic.Int64{})
+	last := value.(*atomic.Int64)
+	prev := last.Load()
+	if prev != 0 && now-prev < interval.Nanoseconds() {
+		return false
+	}
+	return last.CompareAndSwap(prev, now)
 }

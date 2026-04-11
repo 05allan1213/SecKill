@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/BitofferHub/seckill/internal/log"
+	"time"
 )
 
 type PreSecKillStockRepo struct {
@@ -51,7 +52,7 @@ func (r *PreSecKillStockRepo) PreDescStock(ctx context.Context, data *Data,
 	if err != nil {
 		if err.Error() == SecKillErrSecKilling.Error() {
 			secNum = values[1].(string)
-			log.Warn(ctx, "user already in seckill",
+			log.WarnEvery(ctx, "seckill.pre_desc_stock.duplicate", 2*time.Second, "user already in seckill",
 				log.Field(log.FieldAction, "seckill.pre_desc_stock"),
 				log.Field(log.FieldSecNum, secNum),
 			)
@@ -92,7 +93,7 @@ func (r *PreSecKillStockRepo) SetSuccessInPreSecKill(ctx context.Context, data *
 	if err != nil {
 		if err.Error() == SecKillErrSecKilling.Error() {
 			secNum = values[1].(string)
-			log.Warn(ctx, "user already in seckill",
+			log.WarnEvery(ctx, "seckill.set_success.duplicate", 2*time.Second, "user already in seckill",
 				log.Field(log.FieldAction, "seckill.set_success"),
 				log.Field(log.FieldSecNum, secNum),
 			)

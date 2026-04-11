@@ -28,7 +28,7 @@ func (m *AuthMiddleware) Handle(next http.HandlerFunc) http.HandlerFunc {
 		if err != nil {
 			RecordAccessCode(r.Context(), http.StatusUnauthorized)
 			RecordAccessError(r.Context(), err)
-			gwlog.Warn(r.Context(), "auth failed",
+			gwlog.WarnEvery(r.Context(), "gateway.auth.error", 2*time.Second, "auth failed",
 				gwlog.Field(gwlog.FieldAction, "auth.validate"),
 				gwlog.Field(gwlog.FieldPath, r.URL.Path),
 				gwlog.Field(gwlog.FieldError, err.Error()),
@@ -46,7 +46,7 @@ func (m *AuthMiddleware) Handle(next http.HandlerFunc) http.HandlerFunc {
 		if err != nil || !token.Valid {
 			RecordAccessCode(r.Context(), http.StatusUnauthorized)
 			RecordAccessError(r.Context(), NewAccessError("token is invalid"))
-			gwlog.Warn(r.Context(), "auth failed",
+			gwlog.WarnEvery(r.Context(), "gateway.auth.invalid", 2*time.Second, "auth failed",
 				gwlog.Field(gwlog.FieldAction, "auth.validate"),
 				gwlog.Field(gwlog.FieldPath, r.URL.Path),
 				gwlog.Field(gwlog.FieldError, "token is invalid"),
@@ -59,7 +59,7 @@ func (m *AuthMiddleware) Handle(next http.HandlerFunc) http.HandlerFunc {
 		if !ok {
 			RecordAccessCode(r.Context(), http.StatusUnauthorized)
 			RecordAccessError(r.Context(), NewAccessError("token is invalid"))
-			gwlog.Warn(r.Context(), "auth failed",
+			gwlog.WarnEvery(r.Context(), "gateway.auth.invalid", 2*time.Second, "auth failed",
 				gwlog.Field(gwlog.FieldAction, "auth.validate"),
 				gwlog.Field(gwlog.FieldPath, r.URL.Path),
 				gwlog.Field(gwlog.FieldError, "token is invalid"),
@@ -72,7 +72,7 @@ func (m *AuthMiddleware) Handle(next http.HandlerFunc) http.HandlerFunc {
 		if userID == "" || userID == "<nil>" {
 			RecordAccessCode(r.Context(), http.StatusUnauthorized)
 			RecordAccessError(r.Context(), NewAccessError("no authentication"))
-			gwlog.Warn(r.Context(), "auth failed",
+			gwlog.WarnEvery(r.Context(), "gateway.auth.missing", 2*time.Second, "auth failed",
 				gwlog.Field(gwlog.FieldAction, "auth.validate"),
 				gwlog.Field(gwlog.FieldPath, r.URL.Path),
 				gwlog.Field(gwlog.FieldError, "no authentication"),
