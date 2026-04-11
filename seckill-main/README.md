@@ -50,6 +50,12 @@ GOCACHE=/tmp/go-build-cache-seckill go test -tags=integration ./...
 - Prometheus：`http://127.0.0.1:9101/metrics`
 - Trace 文件：`seckill-main/logs/trace.json`
 
+默认策略：
+- 应用内日志按 `100MB` 滚动、保留 `7` 份并压缩
+- 请求/响应摘要默认限制为 `128B`
+- go-zero RPC `Stat` 默认关闭，避免重复记录原始请求
+- trace 默认关闭；需要 `SECKILL_TRACE_ENABLED=true` 才会生成 `trace.json`
+
 ## 压测
 
 统一通过网关压测：

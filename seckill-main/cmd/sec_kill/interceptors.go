@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	obs "github.com/BitofferHub/observability"
 	"github.com/BitofferHub/pkg/constant"
 	bitlog "github.com/BitofferHub/seckill/internal/log"
 	"github.com/zeromicro/go-zero/core/logx"
@@ -24,7 +25,10 @@ func NewTraceIDInterceptor() grpc.UnaryServerInterceptor {
 	}
 }
 
-func NewAccessLogInterceptor() grpc.UnaryServerInterceptor {
+func NewAccessLogInterceptor(summaryMaxBytes int) grpc.UnaryServerInterceptor {
+	if summaryMaxBytes <= 0 {
+		summaryMaxBytes = 128
+	}
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 		begin := time.Now()
 		reply, err := handler(ctx, req)
@@ -32,8 +36,8 @@ func NewAccessLogInterceptor() grpc.UnaryServerInterceptor {
 			logx.Field("method", info.FullMethod),
 			logx.Field("duration_ms", time.Since(begin).Milliseconds()),
 			logx.Field("grpc_code", status.Code(err).String()),
-			logx.Field("req_summary", summarizePayload(req)),
-			logx.Field("reply_summary", summarizePayload(reply)),
+			logx.Field("req_summary", summarizePayload(req, summaryMaxBytes)),
+			logx.Field("reply_summary", summarizePayload(reply, summaryMaxBytes)),
 		}
 		if err != nil {
 			fields = append(fields, logx.Field("err", err))
@@ -65,16 +69,10 @@ func extractTraceID(ctx context.Context) string {
 	return ""
 }
 
-func summarizePayload(v interface{}) string {
+func summarizePayload(v interface{}, summaryMaxBytes int) string {
 	if v == nil {
 		return "<nil>"
 	}
 
-	summary := fmt.Sprintf("%T %v", v, v)
-	const maxLen = 512
-	if len(summary) <= maxLen {
-		return summary
-	}
-
-	return summary[:maxLen] + "...(truncated)"
+	return obs.SummarizePayload(v, summaryMaxBytes)
 }

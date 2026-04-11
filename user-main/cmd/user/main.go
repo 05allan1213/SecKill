@@ -9,6 +9,8 @@ import (
 	userserver "github.com/BitofferHub/user/internal/server/user"
 	"github.com/BitofferHub/user/internal/svc"
 
+	obs "github.com/BitofferHub/observability"
+	"github.com/zeromicro/go-zero/core/logx"
 	"github.com/zeromicro/go-zero/core/service"
 	"github.com/zeromicro/go-zero/zrpc"
 	"google.golang.org/grpc"
@@ -25,6 +27,18 @@ func main() {
 		panic(err)
 	}
 
+	logWriter, err := obs.NewWriter(c.Log.Path, obs.RotationConfig{
+		MaxSizeMB:  c.Observability.LogRotation.MaxSizeMB,
+		MaxBackups: c.Observability.LogRotation.MaxBackups,
+		KeepDays:   c.Log.KeepDays,
+		Compress:   c.Observability.LogRotation.Compress,
+	})
+	if err != nil {
+		panic(err)
+	}
+	defer logWriter.Close()
+	logx.SetWriter(logWriter)
+
 	svcCtx := svc.NewServiceContext(c)
 	defer svcCtx.Close()
 
@@ -35,7 +49,8 @@ func main() {
 			reflection.Register(grpcServer)
 		}
 	})
-	s.AddUnaryInterceptors(NewTraceIDInterceptor(), NewAccessLogInterceptor())
+	logx.SetWriter(logWriter)
+	s.AddUnaryInterceptors(NewTraceIDInterceptor(), NewAccessLogInterceptor(c.Observability.AccessLog.SummaryMaxBytes))
 	defer s.Stop()
 
 	fmt.Printf("Starting user rpc server at %s...\n", c.ListenOn)

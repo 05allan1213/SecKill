@@ -4,6 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 MODE="${1:-local}"
 TOKEN=""
+SMOKE_TRACE="${SMOKE_TRACE:-0}"
 
 case "${MODE}" in
   local)
@@ -47,16 +48,30 @@ cleanup() {
 }
 trap cleanup EXIT
 
+rm -f "${ROOT_DIR}/gateway-main/logs/trace.json" \
+  "${ROOT_DIR}/user-main/logs/trace.json" \
+  "${ROOT_DIR}/seckill-main/logs/trace.json"
+
+if [[ "${SMOKE_TRACE}" == "1" ]]; then
+  GATEWAY_TRACE_ENV=(GATEWAY_TRACE_ENABLED=true GATEWAY_TRACE_SAMPLER=1)
+  USER_TRACE_ENV=(USER_TRACE_ENABLED=true USER_TRACE_SAMPLER=1)
+  SECKILL_TRACE_ENV=(SECKILL_TRACE_ENABLED=true SECKILL_TRACE_SAMPLER=1)
+else
+  GATEWAY_TRACE_ENV=()
+  USER_TRACE_ENV=()
+  SECKILL_TRACE_ENV=()
+fi
+
 cd "${ROOT_DIR}/user-main"
-GOCACHE=/tmp/go-build-cache-user go run ./cmd/user -f "${USER_CFG}" >/tmp/user-smoke.log 2>&1 &
+env "${USER_TRACE_ENV[@]}" GOCACHE=/tmp/go-build-cache-user go run ./cmd/user -f "${USER_CFG}" >/tmp/user-smoke.log 2>&1 &
 USER_PID=$!
 
 cd "${ROOT_DIR}/seckill-main"
-GOCACHE=/tmp/go-build-cache-seckill go run ./cmd/sec_kill -f "${SECKILL_CFG}" >/tmp/seckill-smoke.log 2>&1 &
+env "${SECKILL_TRACE_ENV[@]}" GOCACHE=/tmp/go-build-cache-seckill go run ./cmd/sec_kill -f "${SECKILL_CFG}" >/tmp/seckill-smoke.log 2>&1 &
 SECKILL_PID=$!
 
 cd "${ROOT_DIR}/gateway-main"
-GOCACHE=/tmp/go-build-cache-gateway go run ./cmd/gateway -f "${GATEWAY_CFG}" >/tmp/gateway-smoke.log 2>&1 &
+env "${GATEWAY_TRACE_ENV[@]}" GOCACHE=/tmp/go-build-cache-gateway go run ./cmd/gateway -f "${GATEWAY_CFG}" >/tmp/gateway-smoke.log 2>&1 &
 GATEWAY_PID=$!
 
 for _ in $(seq 1 60); do
@@ -88,9 +103,11 @@ curl -sf 'http://127.0.0.1:9101/metrics' | rg 'rpc_server_requests' >/tmp/seckil
 curl -sf 'http://127.0.0.1:9102/metrics' | rg 'rpc_server_requests' >/tmp/user-metrics.txt
 curl -sf 'http://127.0.0.1:9103/metrics' | rg 'http_server_requests' >/tmp/gateway-metrics.txt
 
-test -s "${ROOT_DIR}/seckill-main/logs/trace.json"
-test -s "${ROOT_DIR}/user-main/logs/trace.json"
-test -s "${ROOT_DIR}/gateway-main/logs/trace.json"
+if [[ "${SMOKE_TRACE}" == "1" ]]; then
+  test -s "${ROOT_DIR}/seckill-main/logs/trace.json"
+  test -s "${ROOT_DIR}/user-main/logs/trace.json"
+  test -s "${ROOT_DIR}/gateway-main/logs/trace.json"
+fi
 
 sleep 1
 

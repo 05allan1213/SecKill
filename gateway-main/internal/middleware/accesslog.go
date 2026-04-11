@@ -7,22 +7,26 @@ import (
 	"strings"
 	"time"
 
+	obs "github.com/BitofferHub/observability"
 	"github.com/BitofferHub/pkg/constant"
 	"github.com/zeromicro/go-zero/core/logx"
 )
 
-const maxLoggedBodySize = 512
+type AccessLogMiddleware struct {
+	summaryMaxBytes int
+}
 
-type AccessLogMiddleware struct{}
-
-func NewAccessLogMiddleware() *AccessLogMiddleware {
-	return &AccessLogMiddleware{}
+func NewAccessLogMiddleware(summaryMaxBytes int) *AccessLogMiddleware {
+	if summaryMaxBytes <= 0 {
+		summaryMaxBytes = 128
+	}
+	return &AccessLogMiddleware{summaryMaxBytes: summaryMaxBytes}
 }
 
 func (m *AccessLogMiddleware) Handle(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		reqSummary := summarizeRequest(r)
-		recorder := newLoggingResponseWriter(w)
+		reqSummary := summarizeRequest(r, m.summaryMaxBytes)
+		recorder := newLoggingResponseWriter(w, m.summaryMaxBytes)
 		begin := time.Now()
 
 		next(recorder, r)
@@ -50,14 +54,17 @@ func (m *AccessLogMiddleware) Handle(next http.HandlerFunc) http.HandlerFunc {
 
 type loggingResponseWriter struct {
 	http.ResponseWriter
-	statusCode int
-	body       bytes.Buffer
+	statusCode      int
+	summaryMaxBytes int
+	body            bytes.Buffer
+	truncated       bool
 }
 
-func newLoggingResponseWriter(w http.ResponseWriter) *loggingResponseWriter {
+func newLoggingResponseWriter(w http.ResponseWriter, summaryMaxBytes int) *loggingResponseWriter {
 	return &loggingResponseWriter{
-		ResponseWriter: w,
-		statusCode:     http.StatusOK,
+		ResponseWriter:  w,
+		statusCode:      http.StatusOK,
+		summaryMaxBytes: summaryMaxBytes,
 	}
 }
 
@@ -67,12 +74,18 @@ func (w *loggingResponseWriter) WriteHeader(statusCode int) {
 }
 
 func (w *loggingResponseWriter) Write(p []byte) (int, error) {
-	if w.body.Len() < maxLoggedBodySize {
-		remain := maxLoggedBodySize - w.body.Len()
+	captureLimit := w.summaryMaxBytes + 1
+	if w.body.Len() < captureLimit {
+		remain := captureLimit - w.body.Len()
 		if remain > len(p) {
 			remain = len(p)
 		}
 		_, _ = w.body.Write(p[:remain])
+		if remain < len(p) {
+			w.truncated = true
+		}
+	} else if len(p) > 0 {
+		w.truncated = true
 	}
 
 	return w.ResponseWriter.Write(p)
@@ -87,42 +100,39 @@ func (w *loggingResponseWriter) BodySummary() string {
 	if body == "" {
 		return "<empty>"
 	}
-	return body
+	if w.truncated {
+		return obs.TruncateString(body, w.summaryMaxBytes)
+	}
+	return obs.TruncateString(body, w.summaryMaxBytes)
 }
 
-func summarizeRequest(r *http.Request) string {
+func summarizeRequest(r *http.Request, summaryMaxBytes int) string {
 	if r == nil {
 		return "<nil>"
 	}
 	if r.URL.RawQuery != "" {
-		return r.URL.RawQuery
+		return obs.TruncateString(r.URL.RawQuery, summaryMaxBytes)
 	}
 	if r.Body == nil {
 		return "<empty>"
 	}
 
-	body, truncated, err := snapshotBody(r)
+	body, err := snapshotBody(r, summaryMaxBytes)
 	if err != nil {
 		return "<read_body_error>"
 	}
 	if len(body) == 0 {
 		return "<empty>"
 	}
-	if truncated {
-		return string(body) + "...(truncated)"
-	}
-	return string(body)
+
+	return obs.TruncateString(string(body), summaryMaxBytes)
 }
 
-func snapshotBody(r *http.Request) ([]byte, bool, error) {
-	limited, err := io.ReadAll(io.LimitReader(r.Body, maxLoggedBodySize+1))
+func snapshotBody(r *http.Request, summaryMaxBytes int) ([]byte, error) {
+	limited, err := io.ReadAll(io.LimitReader(r.Body, int64(summaryMaxBytes+1)))
 	if err != nil {
-		return nil, false, err
+		return nil, err
 	}
 	r.Body = io.NopCloser(io.MultiReader(bytes.NewReader(limited), r.Body))
-
-	if len(limited) > maxLoggedBodySize {
-		return limited[:maxLoggedBodySize], true, nil
-	}
-	return limited, false, nil
+	return limited, nil
 }

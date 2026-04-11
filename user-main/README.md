@@ -50,6 +50,12 @@ GOCACHE=/tmp/go-build-cache-user go test -tags=integration ./...
 - Prometheus：`http://127.0.0.1:9102/metrics`
 - Trace 文件：`user-main/logs/trace.json`
 
+默认策略：
+- 应用内日志按 `100MB` 滚动、保留 `7` 份并压缩
+- 请求/响应摘要默认限制为 `128B`
+- go-zero RPC `Stat` 默认关闭，避免重复记录原始请求
+- trace 默认关闭；需要 `USER_TRACE_ENABLED=true` 才会生成 `trace.json`
+
 ## RPC 参考
 
 - [rpc-reference.md](/home/monody/project/Microsecond%20killing%20service/docs/rpc-reference.md)

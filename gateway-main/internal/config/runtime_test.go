@@ -49,18 +49,62 @@ func TestApplyRuntimeConfig(t *testing.T) {
 func TestApplyEnvOverrides(t *testing.T) {
 	t.Setenv("GATEWAY_AUTH_SECRET", "secret-from-env")
 	t.Setenv("GATEWAY_REDIS_PASSWORD", "redis-from-env")
+	t.Setenv("GATEWAY_TRACE_ENABLED", "true")
+	t.Setenv("GATEWAY_TRACE_SAMPLER", "0.25")
+	t.Setenv("GATEWAY_LOG_MAX_SIZE_MB", "32")
+	t.Setenv("GATEWAY_LOG_MAX_BACKUPS", "5")
+	t.Setenv("GATEWAY_LOG_COMPRESS", "false")
+	t.Setenv("GATEWAY_ACCESS_SUMMARY_MAX_BYTES", "96")
 
 	cfg := Config{
 		Auth:  AuthConf{Secret: "secret-from-config"},
 		Redis: RedisConf{PassWord: "redis-from-config"},
 	}
+	cfg.Telemetry.Sampler = 0.01
 
 	ApplyEnvOverrides(&cfg)
+	applyObservability(&cfg)
 
 	if cfg.Auth.Secret != "secret-from-env" {
 		t.Fatalf("expected auth secret override, got %q", cfg.Auth.Secret)
 	}
 	if cfg.Redis.PassWord != "redis-from-env" {
 		t.Fatalf("expected redis password override, got %q", cfg.Redis.PassWord)
+	}
+	if !cfg.Observability.Trace.Enabled {
+		t.Fatal("expected trace to be enabled from env")
+	}
+	if cfg.Telemetry.Sampler != 0.25 {
+		t.Fatalf("expected sampler override, got %v", cfg.Telemetry.Sampler)
+	}
+	if cfg.Observability.LogRotation.MaxSizeMB != 32 {
+		t.Fatalf("expected max size override, got %d", cfg.Observability.LogRotation.MaxSizeMB)
+	}
+	if cfg.Observability.LogRotation.MaxBackups != 5 {
+		t.Fatalf("expected max backups override, got %d", cfg.Observability.LogRotation.MaxBackups)
+	}
+	if cfg.Observability.LogRotation.Compress {
+		t.Fatal("expected compress override to be false")
+	}
+	if cfg.Observability.AccessLog.SummaryMaxBytes != 96 {
+		t.Fatalf("expected access summary bytes override, got %d", cfg.Observability.AccessLog.SummaryMaxBytes)
+	}
+}
+
+func TestApplyObservability_DisablesTrace(t *testing.T) {
+	cfg := Config{}
+	cfg.Telemetry.Name = "gateway"
+	cfg.Telemetry.Endpoint = "logs/trace.json"
+	cfg.Telemetry.Batcher = "file"
+	cfg.Telemetry.Sampler = 1
+	cfg.Middlewares.Trace = true
+
+	applyObservability(&cfg)
+
+	if cfg.Middlewares.Trace {
+		t.Fatal("expected trace middleware to be disabled")
+	}
+	if cfg.Telemetry.Endpoint != "" || cfg.Telemetry.Name != "" || cfg.Telemetry.Batcher != "" || cfg.Telemetry.Sampler != 0 {
+		t.Fatalf("expected telemetry to be disabled, got %#v", cfg.Telemetry)
 	}
 }

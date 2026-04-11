@@ -15,8 +15,17 @@ Prometheus:
 Telemetry:
   Name: user-rpc
   Endpoint: logs/trace.json
-  Sampler: 1.0
+  Sampler: 0.01
   Batcher: file
+Observability:
+  LogRotation:
+    MaxSizeMB: 100
+    MaxBackups: 7
+    Compress: true
+  AccessLog:
+    SummaryMaxBytes: 128
+  Trace:
+    Enabled: false
 ConfigCenter:
   Enabled: true
   Endpoints:
@@ -31,7 +40,7 @@ Etcd:
 Middlewares:
   Trace: true
   Prometheus: true
-  Stat: true
+  Stat: false
   Recover: true
   Breaker: true
 Data:
@@ -40,9 +49,9 @@ Data:
     User: root
     Password: "123456"
     DataBase: lottery_system
-    MaxIdleConn: 2000
-    MaxOpenConn: 20000
-    MaxIdleTime: 30
+    MaxIdleConn: 50
+    MaxOpenConn: 200
+    MaxIdleTime: 300
   Redis:
     Addr: 127.0.0.1:6379
     Db: 8

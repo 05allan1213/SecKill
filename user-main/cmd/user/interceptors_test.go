@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/BitofferHub/pkg/constant"
@@ -61,7 +62,7 @@ func TestNewAccessLogInterceptor_Success(t *testing.T) {
 	req := struct{ UserID int64 }{UserID: 1}
 	reply := struct{ UserName string }{UserName: "admin"}
 
-	interceptor := NewAccessLogInterceptor()
+	interceptor := NewAccessLogInterceptor(128)
 	info := &grpc.UnaryServerInfo{FullMethod: "/user.User/GetUser"}
 	_, err := interceptor(ctx, req, info, func(ctx context.Context, req interface{}) (interface{}, error) {
 		return reply, nil
@@ -104,7 +105,7 @@ func TestNewAccessLogInterceptor_Error(t *testing.T) {
 	req := struct{ UserName string }{UserName: "admin"}
 	expectedErr := errors.New("boom")
 
-	interceptor := NewAccessLogInterceptor()
+	interceptor := NewAccessLogInterceptor(128)
 	info := &grpc.UnaryServerInfo{FullMethod: "/user.User/GetUserByName"}
 	_, err := interceptor(ctx, req, info, func(ctx context.Context, req interface{}) (interface{}, error) {
 		return nil, expectedErr
@@ -137,4 +138,29 @@ func installTestWriter() *captureWriter {
 	logx.SetWriter(writer)
 	logx.SetLevel(logx.InfoLevel)
 	return writer
+}
+
+func TestNewAccessLogInterceptor_TruncatesSummaries(t *testing.T) {
+	writer := installTestWriter()
+
+	req := struct{ Payload string }{Payload: strings.Repeat("a", 64)}
+	reply := struct{ Payload string }{Payload: strings.Repeat("b", 64)}
+
+	interceptor := NewAccessLogInterceptor(32)
+	_, err := interceptor(context.Background(), req, &grpc.UnaryServerInfo{FullMethod: "/user.User/Test"}, func(ctx context.Context, req interface{}) (interface{}, error) {
+		return reply, nil
+	})
+	if err != nil {
+		t.Fatalf("unexpected err: %v", err)
+	}
+
+	entry := writer.entries[0]
+	reqSummary := entry.fields["req_summary"].(string)
+	replySummary := entry.fields["reply_summary"].(string)
+	if len(reqSummary) > 32 || len(replySummary) > 32 {
+		t.Fatalf("expected summaries to be truncated, got req=%q reply=%q", reqSummary, replySummary)
+	}
+	if !strings.HasSuffix(reqSummary, "...(truncated)") || !strings.HasSuffix(replySummary, "...(truncated)") {
+		t.Fatalf("expected truncation suffix, got req=%q reply=%q", reqSummary, replySummary)
+	}
 }

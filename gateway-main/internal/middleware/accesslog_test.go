@@ -62,7 +62,7 @@ func TestAccessLogMiddleware_Success(t *testing.T) {
 	req = req.WithContext(WithUserID(WithTraceID(context.Background(), "trace-success"), "42"))
 	recorder := httptest.NewRecorder()
 
-	middleware := NewAccessLogMiddleware()
+	middleware := NewAccessLogMiddleware(128)
 	handler := middleware.Handle(func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
@@ -106,7 +106,7 @@ func TestAccessLogMiddleware_Error(t *testing.T) {
 	req = req.WithContext(WithTraceID(context.Background(), "trace-error"))
 	recorder := httptest.NewRecorder()
 
-	middleware := NewAccessLogMiddleware()
+	middleware := NewAccessLogMiddleware(128)
 	handler := middleware.Handle(func(w http.ResponseWriter, r *http.Request) {
 		WriteCodeMessage(w, http.StatusUnauthorized, http.StatusUnauthorized, "no authentication")
 	})
@@ -136,4 +136,27 @@ func installTestWriter() *captureWriter {
 	logx.SetWriter(writer)
 	logx.SetLevel(logx.InfoLevel)
 	return writer
+}
+
+func TestAccessLogMiddleware_TruncatesSummaries(t *testing.T) {
+	writer := installTestWriter()
+	req := httptest.NewRequest(http.MethodPost, "/login", strings.NewReader(strings.Repeat("a", 64)))
+	recorder := httptest.NewRecorder()
+
+	middleware := NewAccessLogMiddleware(32)
+	handler := middleware.Handle(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = io.Copy(io.Discard, r.Body)
+		_, _ = w.Write([]byte(strings.Repeat("b", 64)))
+	})
+	handler(recorder, req)
+
+	entry := writer.entries[0]
+	reqSummary := entry.fields["req_summary"].(string)
+	replySummary := entry.fields["reply_summary"].(string)
+	if len(reqSummary) > 32 || len(replySummary) > 32 {
+		t.Fatalf("expected summaries to be truncated, got req=%q reply=%q", reqSummary, replySummary)
+	}
+	if !strings.HasSuffix(reqSummary, "...(truncated)") || !strings.HasSuffix(replySummary, "...(truncated)") {
+		t.Fatalf("expected truncation suffix, got req=%q reply=%q", reqSummary, replySummary)
+	}
 }

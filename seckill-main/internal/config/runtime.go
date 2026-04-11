@@ -32,6 +32,7 @@ func Load(path string) (Config, error) {
 	}
 
 	ApplyEnvOverrides(&c)
+	applyObservability(&c)
 	return c, nil
 }
 

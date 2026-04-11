@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"time"
 
+	obs "github.com/BitofferHub/observability"
 	pb "github.com/BitofferHub/seckill/api/sec_kill/proto"
 	"github.com/BitofferHub/seckill/internal/config"
 	seckillserver "github.com/BitofferHub/seckill/internal/server/seckill"
 	"github.com/BitofferHub/seckill/internal/svc"
 
+	"github.com/zeromicro/go-zero/core/logx"
 	"github.com/zeromicro/go-zero/core/service"
 	"github.com/zeromicro/go-zero/zrpc"
 	"google.golang.org/grpc"
@@ -28,6 +30,18 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	logWriter, err := obs.NewWriter(c.Log.Path, obs.RotationConfig{
+		MaxSizeMB:  c.Observability.LogRotation.MaxSizeMB,
+		MaxBackups: c.Observability.LogRotation.MaxBackups,
+		KeepDays:   c.Log.KeepDays,
+		Compress:   c.Observability.LogRotation.Compress,
+	})
+	if err != nil {
+		panic(err)
+	}
+	defer logWriter.Close()
+	logx.SetWriter(logWriter)
 
 	svcCtx := svc.NewServiceContext(c)
 	defer svcCtx.Close()
@@ -49,7 +63,8 @@ func main() {
 			reflection.Register(grpcServer)
 		}
 	})
-	s.AddUnaryInterceptors(NewTraceIDInterceptor(), NewAccessLogInterceptor())
+	logx.SetWriter(logWriter)
+	s.AddUnaryInterceptors(NewTraceIDInterceptor(), NewAccessLogInterceptor(c.Observability.AccessLog.SummaryMaxBytes))
 	defer s.Stop()
 
 	fmt.Printf("Starting seckill rpc server at %s...\n", c.ListenOn)

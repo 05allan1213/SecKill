@@ -67,3 +67,9 @@ GOCACHE=/tmp/go-build-cache-gateway go test -tags=integration ./...
 - 结构化运行日志：`gateway-main/logs/stat.log`
 - Prometheus：`http://127.0.0.1:9103/metrics`
 - Trace 文件：`gateway-main/logs/trace.json`
+
+默认策略：
+- 应用内日志按 `100MB` 滚动、保留 `7` 份并压缩
+- 请求/响应摘要默认限制为 `128B`
+- go-zero REST `Log` 默认关闭，避免重复记录请求体
+- trace 默认关闭；需要 `GATEWAY_TRACE_ENABLED=true` 才会生成 `trace.json`

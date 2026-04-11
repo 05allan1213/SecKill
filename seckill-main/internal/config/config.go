@@ -8,8 +8,9 @@ import (
 
 type Config struct {
 	zrpc.RpcServerConf
-	Data         DataConf
-	ConfigCenter ConfigCenterConf `json:",optional"`
+	Data          DataConf
+	ConfigCenter  ConfigCenterConf  `json:",optional"`
+	Observability ObservabilityConf `json:",optional"`
 }
 
 type ConfigCenterConf struct {
@@ -62,4 +63,24 @@ type KafkaConsumerConf struct {
 
 type RuntimeConfig struct {
 	Data *DataConf `json:",optional"`
+}
+
+type ObservabilityConf struct {
+	LogRotation LogRotationConf `json:",optional"`
+	AccessLog   AccessLogConf   `json:",optional"`
+	Trace       TraceConf       `json:",optional"`
+}
+
+type LogRotationConf struct {
+	MaxSizeMB  int  `json:",default=100"`
+	MaxBackups int  `json:",default=7"`
+	Compress   bool `json:",default=true"`
+}
+
+type AccessLogConf struct {
+	SummaryMaxBytes int `json:",default=128"`
+}
+
+type TraceConf struct {
+	Enabled bool `json:",default=false"`
 }

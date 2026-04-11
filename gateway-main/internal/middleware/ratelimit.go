@@ -28,7 +28,7 @@ func (m *RouteLimitMiddleware) Handle(next http.HandlerFunc) http.HandlerFunc {
 
 		result, err := limiter.Allow(r.Context(), m.routeKey)
 		if err != nil || !result.IsAllowed {
-			WriteJSON(w, http.StatusOK, "ok")
+			WriteCodeMessage(w, http.StatusTooManyRequests, 429, "rate limited")
 			return
 		}
 

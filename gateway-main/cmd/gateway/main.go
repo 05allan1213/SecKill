@@ -8,6 +8,8 @@ import (
 	"github.com/BitofferHub/gateway/internal/handler"
 	gwmiddleware "github.com/BitofferHub/gateway/internal/middleware"
 	"github.com/BitofferHub/gateway/internal/svc"
+	obs "github.com/BitofferHub/observability"
+	"github.com/zeromicro/go-zero/core/logx"
 	"github.com/zeromicro/go-zero/rest"
 
 	_ "go.uber.org/automaxprocs"
@@ -26,8 +28,21 @@ func main() {
 		panic(err)
 	}
 
+	logWriter, err := obs.NewWriter(c.Log.Path, obs.RotationConfig{
+		MaxSizeMB:  c.Observability.LogRotation.MaxSizeMB,
+		MaxBackups: c.Observability.LogRotation.MaxBackups,
+		KeepDays:   c.Log.KeepDays,
+		Compress:   c.Observability.LogRotation.Compress,
+	})
+	if err != nil {
+		panic(err)
+	}
+	defer logWriter.Close()
+	logx.SetWriter(logWriter)
+
 	server := rest.MustNewServer(c.RestConf)
 	defer server.Stop()
+	logx.SetWriter(logWriter)
 
 	server.Use(gwmiddleware.NewTraceMiddleware().Handle)
 

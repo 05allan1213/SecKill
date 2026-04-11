@@ -10,7 +10,7 @@ import (
 )
 
 func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
-	access := gwmiddleware.NewAccessLogMiddleware()
+	access := gwmiddleware.NewAccessLogMiddleware(serverCtx.Config.Observability.AccessLog.SummaryMaxBytes)
 
 	server.AddRoutes(rest.WithMiddlewares([]rest.Middleware{
 		access.Handle,
