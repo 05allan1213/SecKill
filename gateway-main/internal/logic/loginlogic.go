@@ -11,6 +11,8 @@ import (
 	userv1 "github.com/BitofferHub/user/api/user/v1"
 
 	"github.com/zeromicro/go-zero/core/logx"
+	"google.golang.org/grpc/codes"
+	grpcstatus "google.golang.org/grpc/status"
 )
 
 type LoginLogic struct {
@@ -36,6 +38,9 @@ func (l *LoginLogic) Login(req *types.LoginRequest) (resp *types.LoginResponse, 
 		UserName: req.Username,
 	})
 	if err != nil {
+		if st, ok := grpcstatus.FromError(err); ok && st.Code() == codes.NotFound {
+			return nil, &middleware.HTTPError{Status: http.StatusUnauthorized, Message: "incorrect Username or Password"}
+		}
 		return nil, err
 	}
 	if reply == nil || reply.Data == nil || reply.Data.Pwd != req.Password {

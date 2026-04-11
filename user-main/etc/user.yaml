@@ -1,5 +1,8 @@
 Name: user.rpc
 ListenOn: 127.0.0.1:8669
+HealthProbe:
+  Host: 127.0.0.1
+  Port: 8670
 Telemetry:
   Name: user.rpc
   Disable: true

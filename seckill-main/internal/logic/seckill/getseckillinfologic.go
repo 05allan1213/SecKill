@@ -41,7 +41,7 @@ func (l *GetSecKillInfoLogic) GetSecKillInfo(req *pb.GetSecKillInfoRequest) (*pb
 			log.Field(log.FieldSecNum, req.SecNum),
 			log.Field(log.FieldError, err.Error()),
 		)
-		return nil, err
+		return nil, dependencyUnavailableError("pre-seckill query unavailable")
 	}
 
 	reply.Data = &pb.GetSecKillInfoReplyData{

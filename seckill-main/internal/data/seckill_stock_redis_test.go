@@ -86,6 +86,30 @@ func TestPreSecKillStockRepo_PreDescStockAndSetFailed(t *testing.T) {
 	if failedRecord.Reason != "mq send failed" {
 		t.Fatalf("unexpected failure reason: got %q", failedRecord.Reason)
 	}
+
+	retrySecNum := fmt.Sprintf("sec-retry-%d", time.Now().UnixNano())
+	t.Cleanup(func() {
+		clearRedisKeys(t, dt, retrySecNum)
+	})
+	retryRecord := &PreSecKillRecord{
+		SecNum:     retrySecNum,
+		UserID:     userID,
+		GoodsID:    goodsID,
+		GoodsNum:   "abc123",
+		Status:     int(SK_STATUS_BEFORE_ORDER),
+		CreateTime: time.Now(),
+		ModifyTime: time.Now(),
+	}
+	gotRetrySecNum, err := repo.PreDescStock(ctx, dt, userID, goodsID, num, retrySecNum, retryRecord)
+	if err != nil {
+		t.Fatalf("retry pre desc stock after rollback: %v", err)
+	}
+	if gotRetrySecNum != retrySecNum {
+		t.Fatalf("unexpected retry secNum: got %q want %q", gotRetrySecNum, retrySecNum)
+	}
+	if got := mustGetRedisValue(t, dt, stockKey); got != "3" {
+		t.Fatalf("unexpected stock after retry pre desc: got %q want 3", got)
+	}
 }
 
 func TestPreSecKillStockRepo_PreDescStockDuplicate(t *testing.T) {

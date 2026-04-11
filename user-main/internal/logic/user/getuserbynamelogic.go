@@ -35,7 +35,7 @@ func (l *GetUserByNameLogic) GetUserByName(in *v1.GetUserByNameRequest) (*v1.Get
 			log.Field(log.FieldAction, "user.get_by_name"),
 			log.Field(log.FieldError, err.Error()),
 		)
-		return nil, err
+		return nil, userRepoError(err)
 	}
 	return &v1.GetUserByNameReply{
 		Code:    0,

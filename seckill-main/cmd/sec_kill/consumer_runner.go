@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	bitlog "github.com/BitofferHub/seckill/internal/log"
@@ -11,11 +12,12 @@ import (
 )
 
 type ConsumerRunner struct {
-	svcCtx *svc.ServiceContext
-	done   chan struct{}
-	once   sync.Once
-	ctx    context.Context
-	cancel context.CancelFunc
+	svcCtx  *svc.ServiceContext
+	done    chan struct{}
+	once    sync.Once
+	ctx     context.Context
+	cancel  context.CancelFunc
+	running atomic.Bool
 }
 
 func NewConsumerRunner(svcCtx *svc.ServiceContext) *ConsumerRunner {
@@ -26,7 +28,9 @@ func (r *ConsumerRunner) Start() error {
 	r.done = make(chan struct{})
 	r.ctx, r.cancel = context.WithCancel(context.Background())
 	go func() {
+		r.running.Store(true)
 		defer close(r.done)
+		defer r.running.Store(false)
 		defer func() {
 			if recovered := recover(); recovered != nil {
 				bitlog.Error(r.ctx, "seckill consumer panic",
@@ -46,6 +50,13 @@ func (r *ConsumerRunner) Start() error {
 	}()
 
 	return nil
+}
+
+func (r *ConsumerRunner) Running() bool {
+	if r == nil {
+		return false
+	}
+	return r.running.Load()
 }
 
 func (r *ConsumerRunner) Stop(ctx context.Context) error {

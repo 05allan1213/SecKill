@@ -2,12 +2,14 @@ package data
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/BitofferHub/pkg/middlewares/cache"
 	cfg "github.com/BitofferHub/seckill/internal/config"
 	bitlog "github.com/BitofferHub/seckill/internal/log"
 	"github.com/BitofferHub/seckill/internal/mq"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/segmentio/kafka-go"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	gormlogger "gorm.io/gorm/logger"
@@ -21,6 +23,7 @@ type Data struct {
 	rdb        *cache.Client
 	mqProducer mq.Producer
 	mqConsumer mq.Consumer
+	brokers    []string
 	closeOnce  sync.Once
 }
 
@@ -65,6 +68,7 @@ func (p *Data) CloneWithDB(db *gorm.DB) *Data {
 		rdb:        p.rdb,
 		mqProducer: p.mqProducer,
 		mqConsumer: p.mqConsumer,
+		brokers:    p.brokers,
 	}
 }
 
@@ -75,6 +79,36 @@ func (p *Data) RunInTx(ctx context.Context, fn func(txData *Data) error) error {
 	return p.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		return fn(p.CloneWithDB(tx))
 	})
+}
+
+func (p *Data) PingDB(ctx context.Context) error {
+	if p == nil || p.db == nil {
+		return errors.New("database not configured")
+	}
+	sqlDB, err := p.db.DB()
+	if err != nil {
+		return err
+	}
+	return sqlDB.PingContext(ctx)
+}
+
+func (p *Data) PingRedis(ctx context.Context) error {
+	if p == nil || p.rdb == nil {
+		return errors.New("redis not configured")
+	}
+	_, _, err := p.rdb.Get(ctx, "health:probe")
+	return err
+}
+
+func (p *Data) PingKafkaProducer(ctx context.Context) error {
+	if p == nil || len(p.brokers) == 0 {
+		return errors.New("kafka not configured")
+	}
+	conn, err := (&kafka.Dialer{}).DialContext(ctx, "tcp", p.brokers[0])
+	if err != nil {
+		return err
+	}
+	return conn.Close()
 }
 
 func NewDataFromConfig(dt cfg.DataConf, logConf cfg.LogConf) (*Data, error) {
@@ -97,7 +131,13 @@ func NewDataFromConfig(dt cfg.DataConf, logConf cfg.LogConf) (*Data, error) {
 		panic("nil producer")
 	}
 	consumer := newManagedKafkaConsumer(dt.Kafka.Consumer)
-	dta := &Data{db: db, rdb: cache.GetRedisCli(), mqProducer: producer, mqConsumer: consumer}
+	dta := &Data{
+		db:         db,
+		rdb:        cache.GetRedisCli(),
+		mqProducer: producer,
+		mqConsumer: consumer,
+		brokers:    append([]string(nil), dt.Kafka.Producer.Brokers...),
+	}
 	data = dta
 	return dta, nil
 }

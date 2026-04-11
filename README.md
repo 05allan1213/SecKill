@@ -188,8 +188,11 @@ bash ./start_and_test.sh stop
 默认演示环境：
 
 - Gateway：`127.0.0.1:8998`
+- Gateway Health：`127.0.0.1:8998/health`、`127.0.0.1:8998/ready`
 - User RPC：`127.0.0.1:8669`
+- User Health：`127.0.0.1:8670`
 - Seckill RPC：`127.0.0.1:8002`
+- Seckill Health：`127.0.0.1:8003`
 - MySQL：`127.0.0.1:3307`
 - Redis：`127.0.0.1:6379`
 - Kafka：`127.0.0.1:9092`
@@ -238,6 +241,57 @@ curl -X POST http://127.0.0.1:8998/bitstorm/v3/sec_kill \
 curl "http://127.0.0.1:8998/bitstorm/v3/get_sec_kill_info?sec_num=<secNum>" \
   -H "Authorization: Bearer <token>"
 ```
+
+## 错误处理约定
+
+当前版本把错误边界固定成两层：
+
+- 业务失败
+  - 继续返回原有业务响应结构
+  - 通过 `code/message` 表达，比如库存不足、重复秒杀、额度不足
+- 基础设施失败
+  - 通过 gRPC error 在服务间传播
+  - 由 gateway 统一映射成结构化 HTTP 错误
+
+gateway 的默认映射：
+
+- `400`
+  - 请求参数不合法
+- `401`
+  - 未认证或鉴权失败
+- `404`
+  - 显式 not found
+- `429`
+  - 限流
+- `503`
+  - 下游 RPC、MySQL、Redis、Kafka 不可用或超时
+- `500`
+  - 未分类内部错误
+
+所以客户端现在不会直接看到底层数据库或网络错误文本。
+
+## 健康检查
+
+为了让启动脚本和本地排查更稳定，现在三个服务都有健康探针：
+
+- `gateway-main`
+  - `GET /health`
+  - `GET /ready`
+- `user-main`
+  - `GET http://127.0.0.1:8670/health`
+  - `GET http://127.0.0.1:8670/ready`
+- `seckill-main`
+  - `GET http://127.0.0.1:8003/health`
+  - `GET http://127.0.0.1:8003/ready`
+
+语义：
+
+- `/health`
+  - 只表示进程存活
+- `/ready`
+  - 表示关键依赖已可用
+
+`start_and_test.sh` 现在会优先等待 `user-main` 和 `seckill-main` 的 `/ready`，以及 gateway 的 `/health`。
 
 ## V1 / V2 / V3 怎么看
 

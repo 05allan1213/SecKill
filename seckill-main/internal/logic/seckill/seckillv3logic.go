@@ -35,7 +35,7 @@ func (l *SecKillV3Logic) SecKillV3(req *pb.SecKillV3Request) (*pb.SecKillV3Reply
 	goods, err := l.svcCtx.GoodsRepo.GetGoodsInfoByNumWithCache(l.ctx, l.svcCtx.Data, req.GoodsNum)
 	if err != nil {
 		log.Error(l.ctx, "load goods failed", log.Field(log.FieldError, err.Error()))
-		return buildV3Reply("", ERR_FIND_GOODS_FAILED), nil
+		return nil, goodsLookupError(err)
 	}
 
 	record := newPreSecKillRecord(goods, req.UserID, "")
@@ -61,9 +61,9 @@ func (l *SecKillV3Logic) SecKillV3(req *pb.SecKillV3Request) (*pb.SecKillV3Reply
 	if err := l.svcCtx.MessageRepo.SendSecKillMsg(l.ctx, l.svcCtx.Data, msg); err != nil {
 		log.Error(l.ctx, "send seckill message failed", log.Field(log.FieldSecNum, secNum), log.Field(log.FieldError, err.Error()))
 		if failErr := markPreSecKillFailed(l.ctx, l.svcCtx, goods, req.UserID, req.Num, secNum, ERR_SEND_SECKILL_MSG_FAILED, ""); failErr != nil {
-			return nil, failErr
+			return nil, dependencyUnavailableError("pre-seckill rollback unavailable")
 		}
-		return buildV3Reply(secNum, ERR_SEND_SECKILL_MSG_FAILED), nil
+		return nil, dependencyUnavailableError("seckill message queue unavailable")
 	}
 
 	return buildV3Reply(secNum, SUCCESS), nil

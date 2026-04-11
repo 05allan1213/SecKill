@@ -4,8 +4,14 @@ import "github.com/zeromicro/go-zero/zrpc"
 
 type Config struct {
 	zrpc.RpcServerConf
-	Data DataConf
-	Log  LogConf
+	HealthProbe HealthProbeConf
+	Data        DataConf
+	Log         LogConf
+}
+
+type HealthProbeConf struct {
+	Host string `json:",default=127.0.0.1"`
+	Port int    `json:",default=8003"`
 }
 
 type LogConf struct {

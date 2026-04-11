@@ -2,6 +2,7 @@ package data
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/BitofferHub/pkg/middlewares/cache"
 	cfg "github.com/BitofferHub/user/internal/config"
@@ -49,6 +50,17 @@ func (p *Data) RunInTx(ctx context.Context, fn func(txData *Data) error) error {
 	return p.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		return fn(p.CloneWithDB(tx))
 	})
+}
+
+func (p *Data) PingDB(ctx context.Context) error {
+	if p == nil || p.db == nil {
+		return errors.New("database not configured")
+	}
+	sqlDB, err := p.db.DB()
+	if err != nil {
+		return err
+	}
+	return sqlDB.PingContext(ctx)
 }
 
 func NewDataFromConfig(dt cfg.DataConf, logConf cfg.LogConf) (*Data, error) {

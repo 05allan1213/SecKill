@@ -1,5 +1,8 @@
 Name: seckill.rpc
 ListenOn: 127.0.0.1:8002
+HealthProbe:
+  Host: 127.0.0.1
+  Port: 8003
 Telemetry:
   Name: seckill.rpc
   Disable: true

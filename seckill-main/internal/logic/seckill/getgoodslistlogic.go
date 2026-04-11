@@ -34,7 +34,7 @@ func (l *GetGoodsListLogic) GetGoodsList(req *pb.GetGoodsListRequest) (*pb.GetGo
 			log.Field("limit", req.Limit),
 			log.Field(log.FieldError, err.Error()),
 		)
-		return nil, err
+		return nil, dependencyUnavailableError("goods list unavailable")
 	}
 
 	reply.Data = &pb.GetGoodsListReplyData{

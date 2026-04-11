@@ -8,6 +8,7 @@ import (
 
 	pb "github.com/BitofferHub/seckill/api/sec_kill/proto"
 	"github.com/BitofferHub/seckill/internal/config"
+	healthserver "github.com/BitofferHub/seckill/internal/health"
 	seckillserver "github.com/BitofferHub/seckill/internal/server/seckill"
 	"github.com/BitofferHub/seckill/internal/svc"
 
@@ -40,6 +41,42 @@ func main() {
 		stopCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		_ = consumerRunner.Stop(stopCtx)
+	}()
+
+	healthSrv := healthserver.NewServer(c.HealthProbe.Host, c.HealthProbe.Port, c.Name, []healthserver.Check{
+		{
+			Name: "mysql",
+			Run: func(ctx context.Context) error {
+				return svcCtx.Data.PingDB(ctx)
+			},
+		},
+		{
+			Name: "redis",
+			Run: func(ctx context.Context) error {
+				return svcCtx.Data.PingRedis(ctx)
+			},
+		},
+		{
+			Name: "kafka",
+			Run: func(ctx context.Context) error {
+				return svcCtx.Data.PingKafkaProducer(ctx)
+			},
+		},
+		{
+			Name: "consumer",
+			Run: func(context.Context) error {
+				if !consumerRunner.Running() {
+					return fmt.Errorf("consumer not running")
+				}
+				return nil
+			},
+		},
+	})
+	healthSrv.Start()
+	defer func() {
+		stopCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = healthSrv.Shutdown(stopCtx)
 	}()
 
 	s := zrpc.MustNewServer(c.RpcServerConf, func(grpcServer *grpc.Server) {

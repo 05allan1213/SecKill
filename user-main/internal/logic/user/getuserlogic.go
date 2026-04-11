@@ -35,7 +35,7 @@ func (l *GetUserLogic) GetUser(in *v1.GetUserRequest) (*v1.GetUserReply, error) 
 			log.Field(log.FieldAction, "user.get"),
 			log.Field(log.FieldError, err.Error()),
 		)
-		return nil, err
+		return nil, userRepoError(err)
 	}
 	return &v1.GetUserReply{
 		Code:    0,

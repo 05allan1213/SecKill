@@ -12,7 +12,9 @@ PROJECT_DIR="/home/monody/project/SecKill"
 GATEWAY_URL="http://localhost:8998"
 
 USER_PORT=8669
+USER_HEALTH_PORT=8670
 SECKILL_PORT=8002
+SECKILL_HEALTH_PORT=8003
 GATEWAY_PORT=8998
 
 print_header() {
@@ -62,7 +64,9 @@ check_and_clean_ports() {
     print_header "检查并清理端口"
     
     kill_port_process $USER_PORT "user RPC"
+    kill_port_process $USER_HEALTH_PORT "user health"
     kill_port_process $SECKILL_PORT "seckill RPC"
+    kill_port_process $SECKILL_HEALTH_PORT "seckill health"
     kill_port_process $GATEWAY_PORT "gateway HTTP"
 }
 
@@ -85,6 +89,56 @@ wait_for_service() {
     return 0
 }
 
+wait_for_http() {
+    local url=$1
+    local service=$2
+    local max_attempts=30
+    local attempt=1
+
+    while ! curl -sS "$url" >/dev/null 2>&1; do
+        if [ $attempt -ge $max_attempts ]; then
+            print_error "$service 就绪检查超时: $url"
+            return 1
+        fi
+        sleep 1
+        attempt=$((attempt + 1))
+    done
+    print_success "$service 已就绪 ($url)"
+    return 0
+}
+
+wait_for_ready() {
+    local url=$1
+    local service=$2
+    local max_attempts=60
+    local attempt=1
+
+    while true; do
+        response=$(curl -s "$url" 2>/dev/null)
+        status=$?
+        if [ $status -eq 0 ] && [ -n "$response" ]; then
+            if echo "$response" | grep -q '"status":"ok"'; then
+                print_success "$service 已就绪 ($url)"
+                return 0
+            fi
+            if echo "$response" | grep -q '"status":"not_ready"'; then
+                if [ $((attempt % 10)) -eq 0 ]; then
+                    print_info "$service 等待依赖就绪... ($attempt/$max_attempts)"
+                fi
+            fi
+        fi
+        if [ $attempt -ge $max_attempts ]; then
+            print_error "$service 就绪检查超时: $url"
+            if [ -n "$response" ]; then
+                print_info "最后响应: $response"
+            fi
+            return 1
+        fi
+        sleep 1
+        attempt=$((attempt + 1))
+    done
+}
+
 start_infrastructure() {
     print_header "启动基础设施服务"
     
@@ -101,6 +155,19 @@ start_infrastructure() {
     wait_for_service localhost 3307 "MySQL"
     wait_for_service localhost 6379 "Redis"
     wait_for_service localhost 9092 "Kafka"
+    
+    print_info "等待 MySQL 初始化完成..."
+    for i in {1..30}; do
+        if docker exec mks-mysql mysql -uroot -p123456 -e "USE lottery_system;" >/dev/null 2>&1; then
+            print_success "MySQL 数据库已就绪"
+            break
+        fi
+        if [ $i -eq 30 ]; then
+            print_error "MySQL 数据库初始化超时"
+            return 1
+        fi
+        sleep 1
+    done
 }
 
 init_go_modules() {
@@ -147,9 +214,9 @@ start_services() {
     
     sleep 5
     
-    wait_for_service 127.0.0.1 $USER_PORT "user RPC"
-    wait_for_service 127.0.0.1 $SECKILL_PORT "seckill RPC"
-    wait_for_service 0.0.0.0 $GATEWAY_PORT "gateway HTTP"
+    wait_for_ready "http://127.0.0.1:${USER_HEALTH_PORT}/ready" "user health"
+    wait_for_ready "http://127.0.0.1:${SECKILL_HEALTH_PORT}/ready" "seckill health"
+    wait_for_http "http://127.0.0.1:${GATEWAY_PORT}/health" "gateway health"
     
     echo ""
     print_info "服务进程 PID:"
@@ -384,9 +451,15 @@ stop_services() {
     
     print_info "清理端口 $USER_PORT..."
     lsof -ti:$USER_PORT | xargs -r kill -9 2>/dev/null || true
+
+    print_info "清理端口 $USER_HEALTH_PORT..."
+    lsof -ti:$USER_HEALTH_PORT | xargs -r kill -9 2>/dev/null || true
     
     print_info "清理端口 $SECKILL_PORT..."
     lsof -ti:$SECKILL_PORT | xargs -r kill -9 2>/dev/null || true
+
+    print_info "清理端口 $SECKILL_HEALTH_PORT..."
+    lsof -ti:$SECKILL_HEALTH_PORT | xargs -r kill -9 2>/dev/null || true
     
     print_info "清理端口 $GATEWAY_PORT..."
     lsof -ti:$GATEWAY_PORT | xargs -r kill -9 2>/dev/null || true
@@ -416,7 +489,7 @@ show_usage() {
     echo -e "  ${YELLOW}start${NC}       仅启动服务（基础设施 + 微服务 + MySQL/Redis测试数据）"
     echo -e "  ${YELLOW}test${NC}        仅测试API接口（需先运行 start 或无参数启动）"
     echo -e "  ${YELLOW}stop${NC}        停止所有微服务进程"
-    echo -e "  ${YELLOW}clean${NC}       清理端口占用（8669, 8002, 8998）"
+    echo -e "  ${YELLOW}clean${NC}       清理端口占用（8669, 8670, 8002, 8003, 8998）"
     echo -e "  ${YELLOW}help${NC}        显示此帮助信息"
     echo ""
     echo -e "${GREEN}测试的API接口:${NC}"
@@ -431,7 +504,9 @@ show_usage() {
     echo ""
     echo -e "${GREEN}服务端口:${NC}"
     echo "  user RPC      : 8669"
+    echo "  user health   : 8670"
     echo "  seckill RPC   : 8002"
+    echo "  seckill health: 8003"
     echo "  gateway HTTP  : 8998"
     echo "  etcd          : 20001"
     echo "  MySQL         : 3307"

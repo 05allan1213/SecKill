@@ -1,11 +1,14 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
+	"time"
 
 	v1 "github.com/BitofferHub/user/api/user/v1"
 	"github.com/BitofferHub/user/internal/config"
+	healthserver "github.com/BitofferHub/user/internal/health"
 	userserver "github.com/BitofferHub/user/internal/server/user"
 	"github.com/BitofferHub/user/internal/svc"
 
@@ -26,6 +29,21 @@ func main() {
 	config.ApplyEnvOverrides(&c)
 
 	svcCtx := svc.NewServiceContext(c)
+
+	healthSrv := healthserver.NewServer(c.HealthProbe.Host, c.HealthProbe.Port, c.Name, []healthserver.Check{
+		{
+			Name: "mysql",
+			Run: func(ctx context.Context) error {
+				return svcCtx.Data.PingDB(ctx)
+			},
+		},
+	})
+	healthSrv.Start()
+	defer func() {
+		stopCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = healthSrv.Shutdown(stopCtx)
+	}()
 
 	s := zrpc.MustNewServer(c.RpcServerConf, func(grpcServer *grpc.Server) {
 		v1.RegisterUserServer(grpcServer, userserver.NewUserServer(svcCtx))

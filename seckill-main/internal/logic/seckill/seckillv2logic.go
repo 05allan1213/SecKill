@@ -34,7 +34,7 @@ func (l *SecKillV2Logic) SecKillV2(req *pb.SecKillV2Request) (*pb.SecKillV2Reply
 	goods, err := l.svcCtx.GoodsRepo.GetGoodsInfoByNumWithCache(l.ctx, l.svcCtx.Data, req.GoodsNum)
 	if err != nil {
 		log.Error(l.ctx, "load goods failed", log.Field(log.FieldError, err.Error()))
-		return buildV2Reply("", ERR_FIND_GOODS_FAILED), nil
+		return nil, goodsLookupError(err)
 	}
 
 	record := newPreSecKillRecord(goods, req.UserID, "")
@@ -51,19 +51,20 @@ func (l *SecKillV2Logic) SecKillV2(req *pb.SecKillV2Request) (*pb.SecKillV2Reply
 			code = ERR_CREATE_ORDER_FAILED
 		}
 		if failErr := markPreSecKillFailed(l.ctx, l.svcCtx, goods, req.UserID, req.Num, secNum, code, ""); failErr != nil {
-			return nil, failErr
+			return nil, dependencyUnavailableError("pre-seckill rollback unavailable")
 		}
 		if err != nil {
 			log.Error(l.ctx, "seckill v2 store failed",
 				log.Field(log.FieldError, err.Error()),
 				log.Field("resultCode", code),
 			)
+			return nil, dependencyUnavailableError("seckill storage unavailable")
 		}
 		return buildV2Reply("", code), nil
 	}
 
 	if err := markPreSecKillSuccess(l.ctx, l.svcCtx, goods, req.UserID, secNum, orderNum); err != nil {
-		return nil, err
+		return nil, dependencyUnavailableError("pre-seckill success write unavailable")
 	}
 
 	return buildV2Reply(orderNum, code), nil

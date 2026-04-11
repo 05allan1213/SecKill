@@ -13,11 +13,23 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 	access := gwmiddleware.NewAccessLogMiddleware(serverCtx.Config.Log.AccessDetail)
 	server.AddRoutes(rest.WithMiddlewares([]rest.Middleware{
 		access.Handle,
-	}, rest.Route{
-		Method:  http.MethodPost,
-		Path:    "/login",
-		Handler: LoginHandler(serverCtx),
-	}))
+	},
+		rest.Route{
+			Method:  http.MethodGet,
+			Path:    "/health",
+			Handler: HealthHandler(serverCtx),
+		},
+		rest.Route{
+			Method:  http.MethodGet,
+			Path:    "/ready",
+			Handler: ReadyHandler(serverCtx),
+		},
+		rest.Route{
+			Method:  http.MethodPost,
+			Path:    "/login",
+			Handler: LoginHandler(serverCtx),
+		},
+	))
 
 	auth := gwmiddleware.NewAuthMiddleware(serverCtx.Config.Auth)
 	addProtected := func(routeKey string, route rest.Route) {

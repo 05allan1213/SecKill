@@ -186,10 +186,34 @@ func secKillRetCodeToError(retCode int) error {
 // keyUserSecKilledNum: key: userid+goodsid, value:killedNum
 
 var secKillLua = `
--- key1：用户id，key2：商品id key3：抢购多少个 key4：秒杀单号, keys5:秒杀记录
--- keyLimit是 SK:Limit:goodsID
+-- secKillLua: Redis 预扣脚本
+-- KEYS[1] = userID
+-- KEYS[2] = goodsID
+-- KEYS[3] = 秒杀数量
+-- KEYS[4] = secNum
+-- KEYS[5] = 预秒杀记录 JSON
+--
+-- 相关 key:
+--   SK:Limit{goodsID}                 商品限购阈值
+--   SK:UserGoodsSecNum:{userID}:{goodsID}   用户当前占用中的 secNum
+--   SK:UserSecKilledNum:{userID}:{goodsID}  用户已经预扣/成功的数量
+--   SK:Stock:{goodsID}                Redis 热点库存
+--   {secNum}                          预秒杀记录
+--
+-- 返回:
+--   {0, ""}     预扣成功
+--   {-1, secNum} 用户已有进行中的秒杀请求
+--   {-2, ""}    用户超出限购
+--   {-3, ""}    Redis 库存不足
+--
+-- 流程:
+--   1. 检查用户是否已有进行中的 secNum，占位存在则直接返回旧 secNum。
+--   2. 检查用户累计秒杀数量是否超过商品限额。
+--   3. 检查 Redis 热点库存是否足够。
+--   4. 一次性完成库存预扣、用户已秒杀数量递增、进行中占位写入、预秒杀记录写入。
+-- keyLimit 是 SK:Limit:goodsID
 local keyLimit = "SK:Limit" .. KEYS[2]
--- keyUserGoodsSecNum 是 SK:UserGoodsSecNum:goodsID:userID
+-- keyUserGoodsSecNum 是 SK:UserGoodsSecNum:userID:goodsID
 local keyUserGoodsSecNum = "SK:UserGoodsSecNum:" .. KEYS[1] .. ":" .. KEYS[2]
 -- keyUserSecKilledNum 是SK:UserSecKilledNum:userID:goodsID
 local keyUserSecKilledNum = "SK:UserSecKilledNum:" .. KEYS[1] .. ":" .. KEYS[2]
@@ -229,10 +253,22 @@ return retAry
 `
 
 var userRebackStockLua = `
--- key1：用户id，key2：商品id key3：抢购多少个 key4：秒杀单号, keys5:秒杀记录
--- keyLimit是 SK:Limit:goodsID
+-- userRebackStockLua: 旧版“回退库存”脚本
+-- 当前主流程已经统一改为 setSecKillFailedLua 做失败写回 + 回补。
+-- 这个脚本保留的原因是方便对照早期实现，不参与现在的 V2 / V3 主链路。
+--
+-- KEYS[1] = userID
+-- KEYS[2] = goodsID
+-- KEYS[3] = 秒杀数量
+-- KEYS[4] = secNum
+-- KEYS[5] = 回补后的记录 JSON
+--
+-- 注意:
+--   1. 这个脚本名字虽然叫“reback”，但它的写回行为保留了旧版占位逻辑。
+--   2. 新版本失败闭环请看 setSecKillFailedLua 的注释和实现。
+-- keyLimit 是 SK:Limit:goodsID
 local keyLimit = "SK:Limit" .. KEYS[2]
--- keyUserGoodsSecNum 是 SK:UserGoodsSecNum:goodsID:userID
+-- keyUserGoodsSecNum 是 SK:UserGoodsSecNum:userID:goodsID
 local keyUserGoodsSecNum = "SK:UserGoodsSecNum:" .. KEYS[1] .. ":" .. KEYS[2]
 -- keyUserSecKilledNum 是SK:UserSecKilledNum:userID:goodsID
 local keyUserSecKilledNum = "SK:UserSecKilledNum:" .. KEYS[1] .. ":" .. KEYS[2]
@@ -272,8 +308,18 @@ return retAry
 `
 
 var setSecKillSuccessLua = `
--- key1：用户id，key2：商品id key3：秒杀单号, keys4:秒杀记录
--- keyUserGoodsSecNum 是 SK:UserGoodsSecNum:goodsID:userID
+-- setSecKillSuccessLua: 秒杀成功写回脚本
+-- KEYS[1] = userID
+-- KEYS[2] = goodsID
+-- KEYS[3] = secNum
+-- KEYS[4] = 成功后的预秒杀记录 JSON
+--
+-- 流程:
+--   1. 清空“用户进行中秒杀”占位，允许后续新的请求进入。
+--   2. 用最终成功记录覆盖 secNum 对应的预秒杀记录。
+--
+-- 这里不会动库存或用户累计数量，因为这两个值已经在预扣阶段扣掉，
+-- 成功场景只需要把“进行中”切换为“成功”即可。
 local keyUserGoodsSecNum = "SK:UserGoodsSecNum:" .. KEYS[1] .. ":" .. KEYS[2]
 local retAry = {0, ""}
 redis.call('set', keyUserGoodsSecNum, "") 
@@ -282,7 +328,30 @@ return retAry
 `
 
 var setSecKillFailedLua = `
--- key1：用户id，key2：商品id key3：抢购数量 key4：秒杀单号 key5：失败后的秒杀记录
+-- setSecKillFailedLua: 失败写回 + Redis 回补脚本
+-- KEYS[1] = userID
+-- KEYS[2] = goodsID
+-- KEYS[3] = 秒杀数量
+-- KEYS[4] = secNum
+-- KEYS[5] = 失败后的预秒杀记录 JSON
+--
+-- 相关 key:
+--   SK:Stock:{goodsID}                      Redis 热点库存
+--   SK:UserGoodsSecNum:{userID}:{goodsID}  用户进行中 secNum 占位
+--   SK:UserSecKilledNum:{userID}:{goodsID} 用户累计预扣数量
+--
+-- 流程:
+--   1. 只在“当前进行中 secNum 和传入 secNum 一致”时执行回补，避免误回补别的请求。
+--   2. 清空用户进行中占位。
+--   3. 把 Redis 库存加回去。
+--   4. 把用户累计预扣数量减回去，最低回到 0。
+--   5. 用失败记录覆盖 secNum 对应的预秒杀记录，供 GetSecKillInfo 查询。
+--
+-- 幂等说明:
+--   - 第一次失败回补后，keyUserGoodsSecNum 会被清空。
+--   - 同一个 secNum 再次调用时，第 1 步不会命中，库存和用户计数不会再次回补。
+--   - 但 secNum 对应的失败记录仍会被重复写入，保证查询结果稳定可见。
+--   - 占位被清空后，用户可以重新发起新的秒杀请求。
 local stockKey = "SK:Stock:" .. KEYS[2]
 local keyUserGoodsSecNum = "SK:UserGoodsSecNum:" .. KEYS[1] .. ":" .. KEYS[2]
 local keyUserSecKilledNum = "SK:UserSecKilledNum:" .. KEYS[1] .. ":" .. KEYS[2]

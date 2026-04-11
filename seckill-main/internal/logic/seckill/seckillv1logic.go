@@ -32,13 +32,13 @@ func (l *SecKillV1Logic) SecKillV1(req *pb.SecKillV1Request) (*pb.SecKillV1Reply
 	goods, err := l.svcCtx.GoodsRepo.FindByNum(l.ctx, l.svcCtx.Data, req.GoodsNum)
 	if err != nil {
 		log.Error(l.ctx, "load goods failed", log.Field(log.FieldError, err.Error()))
-		return buildV1Reply("", ERR_FIND_GOODS_FAILED), nil
+		return nil, goodsLookupError(err)
 	}
 
 	orderNum, code, err := secKillInStore(l.ctx, l.svcCtx, goods, "", req.UserID, int(req.Num))
 	if err != nil {
 		log.Error(l.ctx, "seckill v1 store failed", log.Field(log.FieldError, err.Error()))
-		return buildV1Reply("", code), nil
+		return nil, dependencyUnavailableError("seckill storage unavailable")
 	}
 	return buildV1Reply(orderNum, code), nil
 }
