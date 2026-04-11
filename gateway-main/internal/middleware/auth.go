@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/BitofferHub/gateway/internal/config"
+	gwlog "github.com/BitofferHub/gateway/internal/log"
 	"github.com/golang-jwt/jwt/v4"
 )
 
@@ -25,6 +26,13 @@ func (m *AuthMiddleware) Handle(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		tokenString, err := extractToken(r)
 		if err != nil {
+			RecordAccessCode(r.Context(), http.StatusUnauthorized)
+			RecordAccessError(r.Context(), err)
+			gwlog.Warn(r.Context(), "auth failed",
+				gwlog.Field(gwlog.FieldAction, "auth.validate"),
+				gwlog.Field(gwlog.FieldPath, r.URL.Path),
+				gwlog.Field(gwlog.FieldError, err.Error()),
+			)
 			WriteCodeMessage(w, http.StatusUnauthorized, http.StatusUnauthorized, err.Error())
 			return
 		}
@@ -36,23 +44,46 @@ func (m *AuthMiddleware) Handle(next http.HandlerFunc) http.HandlerFunc {
 			return m.secret, nil
 		})
 		if err != nil || !token.Valid {
+			RecordAccessCode(r.Context(), http.StatusUnauthorized)
+			RecordAccessError(r.Context(), NewAccessError("token is invalid"))
+			gwlog.Warn(r.Context(), "auth failed",
+				gwlog.Field(gwlog.FieldAction, "auth.validate"),
+				gwlog.Field(gwlog.FieldPath, r.URL.Path),
+				gwlog.Field(gwlog.FieldError, "token is invalid"),
+			)
 			WriteCodeMessage(w, http.StatusUnauthorized, http.StatusUnauthorized, "token is invalid")
 			return
 		}
 
 		claims, ok := token.Claims.(jwt.MapClaims)
 		if !ok {
+			RecordAccessCode(r.Context(), http.StatusUnauthorized)
+			RecordAccessError(r.Context(), NewAccessError("token is invalid"))
+			gwlog.Warn(r.Context(), "auth failed",
+				gwlog.Field(gwlog.FieldAction, "auth.validate"),
+				gwlog.Field(gwlog.FieldPath, r.URL.Path),
+				gwlog.Field(gwlog.FieldError, "token is invalid"),
+			)
 			WriteCodeMessage(w, http.StatusUnauthorized, http.StatusUnauthorized, "token is invalid")
 			return
 		}
 
 		userID := fmt.Sprintf("%v", claims[identityKey])
 		if userID == "" || userID == "<nil>" {
+			RecordAccessCode(r.Context(), http.StatusUnauthorized)
+			RecordAccessError(r.Context(), NewAccessError("no authentication"))
+			gwlog.Warn(r.Context(), "auth failed",
+				gwlog.Field(gwlog.FieldAction, "auth.validate"),
+				gwlog.Field(gwlog.FieldPath, r.URL.Path),
+				gwlog.Field(gwlog.FieldError, "no authentication"),
+			)
 			WriteCodeMessage(w, http.StatusUnauthorized, http.StatusUnauthorized, "no authentication")
 			return
 		}
 
 		ctx := WithUserID(r.Context(), userID)
+		ctx = gwlog.WithUser(ctx, userID)
+		RecordAccessUser(ctx, userID)
 		next(w, r.WithContext(ctx))
 	}
 }

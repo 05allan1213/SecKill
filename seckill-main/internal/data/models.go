@@ -62,6 +62,7 @@ const (
 	SK_STATUS_PAYED        SecKillStatusEnum = 3
 	SK_STATUS_OOT          SecKillStatusEnum = 4
 	SK_STATUS_CANCEL       SecKillStatusEnum = 5
+	SK_STATUS_FAILED       SecKillStatusEnum = 6
 )
 
 type SecKillRecord struct {
@@ -97,9 +98,11 @@ type PreSecKillRecord struct {
 	SecNum     string
 	UserID     int64
 	GoodsID    int64
+	GoodsNum   string
 	OrderNum   string
 	Price      float64
 	Status     int
+	Reason     string
 	CreateTime time.Time
 	ModifyTime time.Time
 }

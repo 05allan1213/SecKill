@@ -153,6 +153,7 @@ func mapGetSecKillInfoReply(resp *secproto.GetSecKillInfoReply) *types.GetSecKil
 			OrderNum: resp.Data.OrderNum,
 			SecNum:   resp.Data.SecNum,
 			GoodsNum: resp.Data.GoodsNum,
+			Reason:   resp.Data.Reason,
 		}
 	}
 	return reply

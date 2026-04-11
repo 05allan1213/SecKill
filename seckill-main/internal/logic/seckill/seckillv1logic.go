@@ -24,15 +24,20 @@ func NewSecKillV1Logic(ctx context.Context, svcCtx *svc.ServiceContext) *SecKill
 }
 
 func (l *SecKillV1Logic) SecKillV1(req *pb.SecKillV1Request) (*pb.SecKillV1Reply, error) {
+	l.ctx = log.WithFields(l.ctx,
+		log.Field(log.FieldAction, "seckill.v1"),
+		log.Field(log.FieldUserID, req.UserID),
+		log.Field(log.FieldGoodsNum, req.GoodsNum),
+	)
 	goods, err := l.svcCtx.GoodsRepo.FindByNum(l.ctx, l.svcCtx.Data, req.GoodsNum)
 	if err != nil {
-		log.ErrorContextf(l.ctx, "GetGoodsInfo err %s\n", err.Error())
-		return nil, err
+		log.Error(l.ctx, "load goods failed", log.Field(log.FieldError, err.Error()))
+		return buildV1Reply("", ERR_FIND_GOODS_FAILED), nil
 	}
 
 	orderNum, code, err := secKillInStore(l.ctx, l.svcCtx, goods, "", req.UserID, int(req.Num))
 	if err != nil {
-		log.ErrorContextf(l.ctx, "secKillInStore err %s\n", err.Error())
+		log.Error(l.ctx, "seckill v1 store failed", log.Field(log.FieldError, err.Error()))
 		return buildV1Reply("", code), nil
 	}
 	return buildV1Reply(orderNum, code), nil

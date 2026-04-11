@@ -1,51 +1,26 @@
-# Kratos Project Template
+# user-main
 
-## Install Kratos
-```
-go install github.com/go-kratos/kratos/cmd/kratos/v2@latest
-```
-## Create a service
-```
-# Create a template project
-kratos new server
+`user-main` 在这个项目里不是重点模块，它主要提供两类能力：
 
-cd server
-# Add a proto template
-kratos proto add api/server/server.proto
-# Generate the proto code
-kratos proto client api/server/server.proto
-# Generate the source code of service by proto file
-kratos proto server api/server/server.proto -t internal/service
+- 登录时按用户名查询用户
+- 网关鉴权后查询基础用户信息
 
-go generate ./...
-go build -o ./bin/ ./...
-./bin/server -conf ./configs
-```
-## Generate other auxiliary files by Makefile
-```
-# Download and update dependencies
-make init
-# Generate API files (include: pb.go, http, grpc, validate, swagger) by proto file
-make api
-# Generate all files
-make all
-```
-## Automated Initialization (wire)
-```
-# install wire
-go get github.com/google/wire/cmd/wire
+## 关键文件
 
-# generate wire
-cd cmd/server
-wire
-```
+- [internal/logic/user/getuserlogic.go](/home/monody/project/SecKill/user-main/internal/logic/user/getuserlogic.go)
+- [internal/logic/user/getuserbynamelogic.go](/home/monody/project/SecKill/user-main/internal/logic/user/getuserbynamelogic.go)
+- [internal/data/user.go](/home/monody/project/SecKill/user-main/internal/data/user.go)
 
-## Docker
+## 启动
+
 ```bash
-# build
-docker build -t <your-docker-image-name> .
-
-# run
-docker run --rm -p 8000:8000 -p 9000:9000 -v </path/to/your/configs>:/data/conf <your-docker-image-name>
+cd user-main
+go run ./cmd/user -f etc/user.yaml
 ```
 
+默认测试账号：
+
+- 用户名：`admin`
+- 密码：`123321`
+
+完整项目入口请看根目录 [README.md](/home/monody/project/SecKill/README.md)。

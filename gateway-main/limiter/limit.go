@@ -4,9 +4,9 @@ import (
 	"context"
 	"crypto/tls"
 
+	gwlog "github.com/BitofferHub/gateway/internal/log"
 	"github.com/BitofferHub/gateway/limiter/tb"
 	"github.com/redis/go-redis/v9"
-	"github.com/zeromicro/go-zero/core/logx"
 	"golang.org/x/time/rate"
 	"time"
 )
@@ -38,7 +38,10 @@ func NewRateLimiter(config RateLimiterConfig, redisClient *redis.Client) (*RateL
 	ctx := context.Background()
 	tbLimiter, err = tb.NewTBLimiter(ctx, redisClient)
 	if err != nil {
-		logx.Errorf("create redis limier error: %+v", err)
+		gwlog.Error(ctx, "rate limiter init failed",
+			gwlog.Field(gwlog.FieldAction, "rate_limit.init"),
+			gwlog.Field(gwlog.FieldError, err.Error()),
+		)
 		return nil, err
 	}
 	// 为每个接口生成限流配置
@@ -63,18 +66,24 @@ func (r *RateLimiter) Allow(ctx context.Context, url string) (*Result, error) {
 	result := &Result{}
 
 	if err != nil {
-		logx.Errorf("limiter redis error %+v", err)
+		gwlog.Warn(ctx, "rate limiter redis fallback",
+			gwlog.Field(gwlog.FieldAction, "rate_limit.redis_fallback"),
+			gwlog.Field(gwlog.FieldRouteKey, url),
+			gwlog.Field(gwlog.FieldError, err.Error()),
+		)
 		// 如果出错，使用本地限流器
 		localLimit := localRouteLimits[url]
 		if localLimit == nil {
 			// 如果限流器不存在，直接通过
-			logx.Errorf("local limiter is not exist: %+s", url)
+			gwlog.Warn(ctx, "local rate limiter missing",
+				gwlog.Field(gwlog.FieldAction, "rate_limit.local_missing"),
+				gwlog.Field(gwlog.FieldRouteKey, url),
+			)
 			result.IsAllowed = true
 			return result, nil
 		}
 		if localLimit.Allow() {
 			result.IsAllowed = true
-			logx.Infof("local limiter: %+v", url)
 			return result, nil
 		} else {
 			result.IsAllowed = false
@@ -82,7 +91,6 @@ func (r *RateLimiter) Allow(ctx context.Context, url string) (*Result, error) {
 		}
 	}
 
-	logx.Infof("limiter allow: %+v, remaining: %+v", res.Allowed, res.Remaining)
 	if res.Allowed > 0 {
 		result.IsAllowed = true
 		return result, nil

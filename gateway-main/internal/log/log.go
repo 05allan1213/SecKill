@@ -2,14 +2,9 @@ package log
 
 import (
 	"context"
-	stderrors "errors"
-	"fmt"
-	"os"
 	"time"
 
 	"github.com/zeromicro/go-zero/core/logx"
-	"gorm.io/gorm"
-	gormlogger "gorm.io/gorm/logger"
 )
 
 type LogField = logx.LogField
@@ -18,11 +13,6 @@ const (
 	AccessDetailSummary = "summary"
 	AccessDetailRequest = "request"
 	AccessDetailVerbose = "verbose"
-
-	SQLModeSilent = "silent"
-	SQLModeError  = "error"
-	SQLModeSlow   = "slow"
-	SQLModeAll    = "all"
 
 	FieldSeverity = "severity"
 	FieldTraceID  = "traceID"
@@ -40,8 +30,7 @@ const (
 	FieldPath     = "path"
 	FieldRequest  = "request"
 	FieldResponse = "response"
-	FieldRows     = "rows"
-	FieldSQL      = "sql"
+	FieldRouteKey = "routeKey"
 )
 
 type AccessEntry struct {
@@ -54,12 +43,6 @@ type AccessEntry struct {
 	Response any
 	Err      error
 	Cost     time.Duration
-}
-
-func Init(logPath string) {
-	if logPath != "" {
-		_ = os.MkdirAll(logPath, 0o755)
-	}
 }
 
 func Field(key string, value any) LogField {
@@ -107,26 +90,6 @@ func Error(ctx context.Context, msg string, fields ...LogField) {
 	logger(ctx).Errorw(msg, fields...)
 }
 
-func InfoContextf(ctx context.Context, format string, v ...interface{}) {
-	Info(ctx, fmt.Sprintf(format, v...))
-}
-
-func WarnContextf(ctx context.Context, format string, v ...interface{}) {
-	Warn(ctx, fmt.Sprintf(format, v...))
-}
-
-func ErrorContextf(ctx context.Context, format string, v ...interface{}) {
-	Error(ctx, fmt.Sprintf(format, v...))
-}
-
-func Infof(format string, v ...interface{}) {
-	logx.Infow(fmt.Sprintf(format, v...))
-}
-
-func Errorf(format string, v ...interface{}) {
-	logx.Errorw(fmt.Sprintf(format, v...))
-}
-
 func Access(ctx context.Context, detail string, entry AccessEntry) {
 	fields := make([]LogField, 0, 8)
 	if entry.Action != "" {
@@ -164,77 +127,6 @@ func Access(ctx context.Context, detail string, entry AccessEntry) {
 		Warn(ctx, "access", fields...)
 	default:
 		Info(ctx, "access", fields...)
-	}
-}
-
-type GormLogger struct {
-	mode          string
-	slowThreshold time.Duration
-}
-
-func NewGormLogger(mode string, slowThresholdMillisecond int64) *GormLogger {
-	mode = normalizeSQLMode(mode)
-	if slowThresholdMillisecond < 0 {
-		slowThresholdMillisecond = 0
-	}
-	return &GormLogger{
-		mode:          mode,
-		slowThreshold: time.Duration(slowThresholdMillisecond) * time.Millisecond,
-	}
-}
-
-func (l *GormLogger) LogMode(gormlogger.LogLevel) gormlogger.Interface {
-	return l
-}
-
-func (l *GormLogger) Info(context.Context, string, ...interface{}) {}
-
-func (l *GormLogger) Warn(context.Context, string, ...interface{}) {}
-
-func (l *GormLogger) Error(ctx context.Context, msg string, args ...interface{}) {
-	Error(ctx, fmt.Sprintf(msg, args...), Field(FieldAction, "sql.error"))
-}
-
-func (l *GormLogger) Trace(ctx context.Context, begin time.Time, fc func() (string, int64), err error) {
-	executeTime := time.Since(begin)
-	sql, rows := fc()
-	fields := []LogField{
-		Field(FieldSQL, sql),
-		Field(FieldRows, rows),
-		Field(FieldCost, executeTime),
-	}
-
-	if err != nil {
-		if stderrors.Is(err, gorm.ErrRecordNotFound) {
-			if l.mode == SQLModeAll {
-				Warn(ctx, "sql record not found", append(fields, Field(FieldAction, "sql.not_found"))...)
-			}
-			return
-		}
-		Error(ctx, "sql error", append(fields, Field(FieldAction, "sql.error"), Field(FieldError, err.Error()))...)
-		return
-	}
-
-	switch l.mode {
-	case SQLModeAll:
-		if l.slowThreshold > 0 && executeTime >= l.slowThreshold {
-			Info(ctx, "sql slow", append(fields, Field(FieldAction, "sql.slow"))...)
-			return
-		}
-		Info(ctx, "sql query", append(fields, Field(FieldAction, "sql.query"))...)
-	case SQLModeSlow:
-		if l.slowThreshold > 0 && executeTime >= l.slowThreshold {
-			Info(ctx, "sql slow", append(fields, Field(FieldAction, "sql.slow"))...)
-		}
-	}
-}
-
-func normalizeSQLMode(mode string) string {
-	switch mode {
-	case SQLModeSilent, SQLModeError, SQLModeSlow, SQLModeAll:
-		return mode
-	default:
-		return SQLModeSlow
 	}
 }
 

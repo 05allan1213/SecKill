@@ -51,8 +51,8 @@ func (p *Data) RunInTx(ctx context.Context, fn func(txData *Data) error) error {
 	})
 }
 
-func NewDataFromConfig(dt cfg.DataConf) (*Data, error) {
-	db, err := openDB(dt.Database, 0)
+func NewDataFromConfig(dt cfg.DataConf, logConf cfg.LogConf) (*Data, error) {
+	db, err := openDB(dt.Database, logConf)
 	if err != nil {
 		return nil, err
 	}
@@ -67,16 +67,14 @@ func NewDataFromConfig(dt cfg.DataConf) (*Data, error) {
 	return dta, nil
 }
 
-func openDB(conf cfg.DatabaseConf, slowThresholdMillisecond int64) (*gorm.DB, error) {
+func openDB(conf cfg.DatabaseConf, logConf cfg.LogConf) (*gorm.DB, error) {
 	dsn := fmt.Sprintf("%s:%s@(%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
 		conf.User, conf.Password, conf.Addr, conf.DataBase)
 
 	gormCfg := &gorm.Config{
 		Logger: gormlogger.Default.LogMode(gormlogger.Silent),
 	}
-	if slowThresholdMillisecond > 0 {
-		gormCfg.Logger = bitlog.NewGormLogger(slowThresholdMillisecond)
-	}
+	gormCfg.Logger = bitlog.NewGormLogger(logConf.SQLMode, logConf.SQLSlowThresholdMs)
 
 	db, err := gorm.Open(mysql.Open(dsn), gormCfg)
 	if err != nil {

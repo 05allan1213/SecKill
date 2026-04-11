@@ -26,7 +26,10 @@ func NewCreateUserLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Create
 }
 
 func (l *CreateUserLogic) CreateUser(in *v1.CreateUserRequest) (*v1.CreateUserReply, error) {
-	log.InfoContextf(l.ctx, "create req username: %v", in.UserName)
+	log.Info(l.ctx, "create user request",
+		log.Field(log.FieldAction, "user.create"),
+		log.Field("userName", in.UserName),
+	)
 	_, err := l.svcCtx.UserRepo.Save(l.ctx, l.svcCtx.Data, &data.User{
 		UserName: in.UserName,
 		Pwd:      in.Pwd,

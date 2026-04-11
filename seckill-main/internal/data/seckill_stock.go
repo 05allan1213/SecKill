@@ -45,7 +45,11 @@ func (r *SecKillStockRepo) FindByIDWithCache(ctx context.Context, data *Data, se
 	if secKillStr != nil && len(secKillStr) != 0 {
 		err = data.GetCache().Set(ctx, cacheKey, string(secKillStr), 10)
 		if err != nil {
-			log.InfoContextf(ctx, "set secKill cacheKey err %s", err.Error())
+			log.Warn(ctx, "set cache failed",
+				log.Field(log.FieldAction, "cache.set"),
+				log.Field("cacheKey", cacheKey),
+				log.Field(log.FieldError, err.Error()),
+			)
 		}
 	}
 	return secKill, nil

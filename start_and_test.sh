@@ -171,6 +171,21 @@ setup_redis_stock() {
     print_success "已清理用户购买记录"
 }
 
+setup_mysql_state() {
+    print_header "重置MySQL秒杀测试数据"
+
+    docker exec mks-mysql mysql -uroot -p123456 bitstorm -e "
+        DELETE FROM t_order;
+        DELETE FROM t_seckill_record;
+        DELETE FROM t_user_quota;
+        INSERT INTO t_quota(goods_id, num) VALUES (1, 5)
+          ON DUPLICATE KEY UPDATE num = VALUES(num);
+        UPDATE t_seckill_stock SET stock = 10 WHERE goods_id = 1;
+    " >/dev/null 2>&1
+
+    print_success "MySQL秒杀数据已重置 (stock=10, quota=5)"
+}
+
 test_api() {
     print_header "测试API接口"
     
@@ -397,8 +412,8 @@ show_usage() {
     echo "  $0 [命令]"
     echo ""
     echo -e "${GREEN}命令列表:${NC}"
-    echo -e "  ${YELLOW}(无参数)${NC}    完整流程：启动基础设施 → 初始化依赖 → 启动服务 → 测试API"
-    echo -e "  ${YELLOW}start${NC}       仅启动服务（基础设施 + 微服务 + Redis库存设置）"
+    echo -e "  ${YELLOW}(无参数)${NC}    完整流程：启动基础设施 → 初始化依赖 → 启动服务 → 重置测试数据 → 测试API"
+    echo -e "  ${YELLOW}start${NC}       仅启动服务（基础设施 + 微服务 + MySQL/Redis测试数据）"
     echo -e "  ${YELLOW}test${NC}        仅测试API接口（需先运行 start 或无参数启动）"
     echo -e "  ${YELLOW}stop${NC}        停止所有微服务进程"
     echo -e "  ${YELLOW}clean${NC}       清理端口占用（8669, 8002, 8998）"
@@ -424,7 +439,7 @@ show_usage() {
     echo "  Kafka         : 9092"
     echo ""
     echo -e "${GREEN}注意事项:${NC}"
-    echo "  • 秒杀v2/v3 需要在Redis中设置库存: SK:Stock:1"
+    echo "  • 脚本会自动重置 MySQL 秒杀数据和 Redis 热点 key"
     echo "  • 认证接口需要使用 Header: Authorization: Bearer <token>"
     echo "  • 日志文件位置: /tmp/user.log, /tmp/seckill.log, /tmp/gateway.log"
     echo ""
@@ -448,6 +463,7 @@ main() {
     start_infrastructure
     init_go_modules
     start_services
+    setup_mysql_state
     setup_redis_stock
     
     if test_api; then
@@ -467,6 +483,7 @@ case "${1:-}" in
         start_infrastructure
         init_go_modules
         start_services
+        setup_mysql_state
         setup_redis_stock
         show_logs
         ;;

@@ -34,7 +34,7 @@ func main() {
 			reflection.Register(grpcServer)
 		}
 	})
-	s.AddUnaryInterceptors(NewTraceIDInterceptor(), NewAccessLogInterceptor())
+	s.AddUnaryInterceptors(NewTraceIDInterceptor(), NewAccessLogInterceptor(c.Log.AccessDetail))
 	defer s.Stop()
 
 	fmt.Printf("Starting user rpc server at %s...\n", c.ListenOn)

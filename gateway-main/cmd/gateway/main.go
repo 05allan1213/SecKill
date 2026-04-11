@@ -6,6 +6,7 @@ import (
 
 	"github.com/BitofferHub/gateway/internal/config"
 	"github.com/BitofferHub/gateway/internal/handler"
+	gwlog "github.com/BitofferHub/gateway/internal/log"
 	gwmiddleware "github.com/BitofferHub/gateway/internal/middleware"
 	"github.com/BitofferHub/gateway/internal/svc"
 	"github.com/zeromicro/go-zero/core/conf"
@@ -24,6 +25,12 @@ func main() {
 
 	var c config.Config
 	conf.MustLoad(*configFile, &c)
+
+	gwlog.Info(nil, "gateway starting",
+		gwlog.Field(gwlog.FieldAction, "gateway.start"),
+		gwlog.Field("host", c.Host),
+		gwlog.Field("port", c.Port),
+	)
 
 	server := rest.MustNewServer(c.RestConf)
 	defer server.Stop()

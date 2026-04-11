@@ -1,51 +1,46 @@
-# Kratos Project Template
+# seckill-main
 
-## Install Kratos
-```
-go install github.com/go-kratos/kratos/cmd/kratos/v2@latest
-```
-## Create a service
-```
-# Create a template project
-kratos new server
+`seckill-main` 是整个项目的主角，秒杀核心流程都在这里。
 
-cd server
-# Add a proto template
-kratos proto add api/server/server.proto
-# Generate the proto code
-kratos proto client api/server/server.proto
-# Generate the source code of service by proto file
-kratos proto server api/server/server.proto -t internal/service
+## 模块职责
 
-go generate ./...
-go build -o ./bin/ ./...
-./bin/server -conf ./configs
-```
-## Generate other auxiliary files by Makefile
-```
-# Download and update dependencies
-make init
-# Generate API files (include: pb.go, http, grpc, validate, swagger) by proto file
-make api
-# Generate all files
-make all
-```
-## Automated Initialization (wire)
-```
-# install wire
-go get github.com/google/wire/cmd/wire
+- `internal/server`
+  - gRPC 接入层
+- `internal/logic/seckill`
+  - 秒杀业务流程
+- `internal/data`
+  - DB、Redis、Kafka 访问
+- `internal/svc`
+  - 依赖注入
 
-# generate wire
-cd cmd/server
-wire
-```
+## 最值得先看的文件
 
-## Docker
+- [internal/logic/seckill/seckillv1logic.go](/home/monody/project/SecKill/seckill-main/internal/logic/seckill/seckillv1logic.go)
+- [internal/logic/seckill/seckillv2logic.go](/home/monody/project/SecKill/seckill-main/internal/logic/seckill/seckillv2logic.go)
+- [internal/logic/seckill/seckillv3logic.go](/home/monody/project/SecKill/seckill-main/internal/logic/seckill/seckillv3logic.go)
+- [internal/logic/seckill/flow.go](/home/monody/project/SecKill/seckill-main/internal/logic/seckill/flow.go)
+- [internal/data/seckill_stock_redis.go](/home/monody/project/SecKill/seckill-main/internal/data/seckill_stock_redis.go)
+
+## 三版秒杀
+
+- `V1`
+  - 数据库事务基线版本
+- `V2`
+  - Redis 预扣库存 + 同步落库
+- `V3`
+  - Redis 预扣库存 + MQ 异步下单 + 查询闭环
+
+## 启动
+
 ```bash
-# build
-docker build -t <your-docker-image-name> .
-
-# run
-docker run --rm -p 8000:8000 -p 9000:9000 -v </path/to/your/configs>:/data/conf <your-docker-image-name>
+cd seckill-main
+go run ./cmd/sec_kill -f etc/seckill.yaml
 ```
 
+生成 proto：
+
+```bash
+make api
+```
+
+完整学习路径见根目录 [README.md](/home/monody/project/SecKill/README.md) 和 [学习.md](/home/monody/project/SecKill/学习.md)。

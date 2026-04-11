@@ -9,11 +9,18 @@ import (
 
 type Config struct {
 	rest.RestConf
-	Auth          AuthConf               `json:",optional"`
-	Redis         RedisConf              `json:",optional"`
-	UserRpc       zrpc.RpcClientConf     `json:",optional"`
-	SeckillRpc    zrpc.RpcClientConf     `json:",optional"`
-	RoutePolicies map[string]RoutePolicy `json:",optional"`
+	Auth                AuthConf                          `json:",optional"`
+	Log                 LogConf                           `json:",optional"`
+	Redis               RedisConf                         `json:",optional"`
+	LimiterProfile      string                            `json:",default=compare"`
+	UserRpc             zrpc.RpcClientConf                `json:",optional"`
+	SeckillRpc          zrpc.RpcClientConf                `json:",optional"`
+	RoutePolicies       map[string]RoutePolicy            `json:",optional"`
+	RoutePolicyProfiles map[string]map[string]RoutePolicy `json:",optional"`
+}
+
+type LogConf struct {
+	AccessDetail string `json:",default=request"`
 }
 
 type AuthConf struct {

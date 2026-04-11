@@ -24,10 +24,16 @@ func NewGetGoodsListLogic(ctx context.Context, svcCtx *svc.ServiceContext) *GetG
 }
 
 func (l *GetGoodsListLogic) GetGoodsList(req *pb.GetGoodsListRequest) (*pb.GetGoodsListReply, error) {
+	l.ctx = log.WithAction(l.ctx, "GetGoodsList")
 	reply := new(pb.GetGoodsListReply)
 	goodsList, err := l.svcCtx.GoodsRepo.GetGoodsList(l.ctx, l.svcCtx.Data, int(req.Offset), int(req.Limit))
 	if err != nil {
-		log.ErrorContextf(l.ctx, "get secinfo by secnum err %s\n", err.Error())
+		log.Error(l.ctx, "get goods list failed",
+			log.Field(log.FieldAction, "GetGoodsList"),
+			log.Field("offset", req.Offset),
+			log.Field("limit", req.Limit),
+			log.Field(log.FieldError, err.Error()),
+		)
 		return nil, err
 	}
 

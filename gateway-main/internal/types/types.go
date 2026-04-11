@@ -14,6 +14,7 @@ type GetSecKillInfoReplyData struct {
 	OrderNum string `json:"orderNum"`
 	SecNum   string `json:"secNum"`
 	GoodsNum string `json:"goodsNum"`
+	Reason   string `json:"reason"`
 }
 
 type GetSecKillInfoRequest struct {

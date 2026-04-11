@@ -7,6 +7,10 @@ Etcd:
   Hosts:
     - 127.0.0.1:20001
   Key: seckill.rpc
+Log:
+  AccessDetail: request
+  SQLMode: slow
+  SQLSlowThresholdMs: 100
 Data:
   Database:
     Addr: 127.0.0.1:3307
@@ -26,7 +30,7 @@ Data:
       Brokers:
         - 127.0.0.1:9092
       Topic: seckill
-      Ack: 0
+      Ack: 1
     Consumer:
       Brokers:
         - 127.0.0.1:9092

@@ -82,6 +82,7 @@ type GetSecKillInfoReplyData {
 	OrderNum string `json:"orderNum"`
 	SecNum   string `json:"secNum"`
 	GoodsNum string `json:"goodsNum"`
+	Reason   string `json:"reason"`
 }
 
 type GetSecKillInfoReply {
@@ -115,4 +116,3 @@ service gateway-api {
 	@handler BitstormGetSecKillInfo
 	get /bitstorm/v3/get_sec_kill_info (GetSecKillInfoRequest) returns (GetSecKillInfoReply)
 }
-

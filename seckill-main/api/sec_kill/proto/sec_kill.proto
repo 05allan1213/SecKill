@@ -114,6 +114,7 @@ message GetSecKillInfoReplyData {
 	string orderNum = 2;
 	string secNum = 3;
 	string goodsNum = 4;
+	string reason = 5;
 }
 
 message GetOrderListRequest {

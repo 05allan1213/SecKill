@@ -96,10 +96,14 @@ func (r *GoodsRepo) GetGoodsInfoByNumWithCache(ctx context.Context, data *Data, 
 		return nil, err
 	}
 	goodsStr, _ := json.Marshal(goods)
-	if len(goodsStr) != 0 {
+	if goodsStr != nil && len(goodsStr) != 0 {
 		err = data.GetCache().Set(ctx, cacheKey, string(goodsStr), 10*time.Second)
 		if err != nil {
-			log.InfoContextf(ctx, "set goods cacheKey err %s", err.Error())
+			log.Warn(ctx, "set cache failed",
+				log.Field(log.FieldAction, "cache.set"),
+				log.Field("cacheKey", cacheKey),
+				log.Field(log.FieldError, err.Error()),
+			)
 		}
 	}
 	return goods, nil

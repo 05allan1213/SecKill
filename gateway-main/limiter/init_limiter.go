@@ -2,9 +2,10 @@ package limiter
 
 import (
 	"encoding/json"
-	"fmt"
-	"github.com/redis/go-redis/v9"
 	"os"
+
+	gwlog "github.com/BitofferHub/gateway/internal/log"
+	"github.com/redis/go-redis/v9"
 )
 
 var Rl *RateLimiter
@@ -14,14 +15,20 @@ func InitLimiter(routeConfigPath string, redisClient *redis.Client,
 
 	routes, err := os.ReadFile(routeConfigPath)
 	if err != nil {
-		fmt.Println(err)
-		panic(err)
+		gwlog.Error(nil, "read limiter config failed",
+			gwlog.Field(gwlog.FieldAction, "limiter.init"),
+			gwlog.Field(gwlog.FieldError, err.Error()),
+		)
+		return err
 	}
 	routePolicies := make(map[string]RoutePolicy, 0)
 	err = json.Unmarshal(routes, &routePolicies)
 	if err != nil {
-		fmt.Println(err)
-		panic(err)
+		gwlog.Error(nil, "parse limiter config failed",
+			gwlog.Field(gwlog.FieldAction, "limiter.init"),
+			gwlog.Field(gwlog.FieldError, err.Error()),
+		)
+		return err
 	}
 
 	rateLimiterConfig := RateLimiterConfig{
@@ -33,6 +40,10 @@ func InitLimiter(routeConfigPath string, redisClient *redis.Client,
 	rl, err := NewRateLimiter(rateLimiterConfig, redisClient)
 
 	if err != nil {
+		gwlog.Error(nil, "create rate limiter failed",
+			gwlog.Field(gwlog.FieldAction, "limiter.init"),
+			gwlog.Field(gwlog.FieldError, err.Error()),
+		)
 		return err
 	}
 	Rl = rl

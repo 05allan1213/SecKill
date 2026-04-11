@@ -2,12 +2,8 @@ package seckill
 
 import (
 	"context"
-	"fmt"
-	"time"
 
-	"github.com/BitofferHub/pkg/utils"
 	pb "github.com/BitofferHub/seckill/api/sec_kill/proto"
-	"github.com/BitofferHub/seckill/internal/data"
 	"github.com/BitofferHub/seckill/internal/log"
 	"github.com/BitofferHub/seckill/internal/svc"
 	"github.com/zeromicro/go-zero/core/logx"
@@ -28,53 +24,46 @@ func NewSecKillV2Logic(ctx context.Context, svcCtx *svc.ServiceContext) *SecKill
 }
 
 func (l *SecKillV2Logic) SecKillV2(req *pb.SecKillV2Request) (*pb.SecKillV2Reply, error) {
-	reply := new(pb.SecKillV2Reply)
+	l.ctx = log.WithFields(l.ctx,
+		log.Field(log.FieldAction, "seckill.v2"),
+		log.Field(log.FieldUserID, req.UserID),
+		log.Field(log.FieldGoodsNum, req.GoodsNum),
+	)
 
 	goods, err := l.svcCtx.GoodsRepo.GetGoodsInfoByNumWithCache(l.ctx, l.svcCtx.Data, req.GoodsNum)
 	if err != nil {
-		log.InfoContextf(l.ctx, "GetGoodsInfo err %s\n", err.Error())
-		return nil, err
+		log.Error(l.ctx, "load goods failed", log.Field(log.FieldError, err.Error()))
+		return buildV2Reply("", ERR_FIND_GOODS_FAILED), nil
 	}
 
-	secNum := utils.NewUuid()
-	now := time.Now()
-	record := data.PreSecKillRecord{
-		SecNum:     secNum,
-		UserID:     req.UserID,
-		GoodsID:    goods.ID,
-		OrderNum:   "",
-		Price:      goods.Price,
-		Status:     int(data.SK_STATUS_BEFORE_ORDER),
-		CreateTime: now,
-		ModifyTime: now,
-	}
-
-	alreadySecNum, err := l.svcCtx.PreStockRepo.PreDescStock(l.ctx, l.svcCtx.Data, req.UserID, goods.ID, req.Num, secNum, &record)
+	record := newPreSecKillRecord(goods, req.UserID, "")
+	secNum := record.SecNum
+	_, err = l.svcCtx.PreStockRepo.PreDescStock(l.ctx, l.svcCtx.Data, req.UserID, goods.ID, req.Num, secNum, record)
 	if err != nil {
-		if err.Error() == data.SecKillErrSecKilling.Error() {
-			reply.Message = err.Error() + ":" + fmt.Sprintf("%s", alreadySecNum)
-			return reply, nil
-		}
-		log.ErrorContextf(l.ctx, "Desc stock err %s\n", err.Error())
-		reply.Code = -10100
-		reply.Message = err.Error()
-		return reply, err
+		log.Warn(l.ctx, "pre-desc stock failed", log.Field(log.FieldError, err.Error()))
+		return buildV2Reply("", codeFromPreDescError(err)), nil
 	}
 
 	orderNum, code, err := secKillInStore(l.ctx, l.svcCtx, goods, secNum, req.UserID, int(req.Num))
-	if err != nil {
-		return reply, err
+	if err != nil || code != SUCCESS {
+		if code == SUCCESS {
+			code = ERR_CREATE_ORDER_FAILED
+		}
+		if failErr := markPreSecKillFailed(l.ctx, l.svcCtx, goods, req.UserID, req.Num, secNum, code, ""); failErr != nil {
+			return nil, failErr
+		}
+		if err != nil {
+			log.Error(l.ctx, "seckill v2 store failed",
+				log.Field(log.FieldError, err.Error()),
+				log.Field("resultCode", code),
+			)
+		}
+		return buildV2Reply("", code), nil
 	}
 
-	record.OrderNum = orderNum
-	record.Status = int(data.SK_STATUS_BEFORE_PAY)
-	record.ModifyTime = time.Now()
-	if _, err := l.svcCtx.PreStockRepo.SetSuccessInPreSecKill(l.ctx, l.svcCtx.Data, req.UserID, goods.ID, secNum, &record); err != nil {
-		log.ErrorContextf(l.ctx, "set pre seckill success err %s\n", err.Error())
-		return reply, err
+	if err := markPreSecKillSuccess(l.ctx, l.svcCtx, goods, req.UserID, secNum, orderNum); err != nil {
+		return nil, err
 	}
 
-	reply.Data = &pb.SecKillV2ReplyData{OrderNum: orderNum}
-	reply.Code = int32(code)
-	return reply, nil
+	return buildV2Reply(orderNum, code), nil
 }

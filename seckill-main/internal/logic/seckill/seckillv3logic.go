@@ -2,10 +2,7 @@ package seckill
 
 import (
 	"context"
-	"fmt"
-	"time"
 
-	"github.com/BitofferHub/pkg/utils"
 	pb "github.com/BitofferHub/seckill/api/sec_kill/proto"
 	"github.com/BitofferHub/seckill/internal/data"
 	"github.com/BitofferHub/seckill/internal/log"
@@ -28,35 +25,29 @@ func NewSecKillV3Logic(ctx context.Context, svcCtx *svc.ServiceContext) *SecKill
 }
 
 func (l *SecKillV3Logic) SecKillV3(req *pb.SecKillV3Request) (*pb.SecKillV3Reply, error) {
-	reply := new(pb.SecKillV3Reply)
+	l.ctx = log.WithFields(l.ctx,
+		log.Field(log.FieldAction, "seckill.v3"),
+		log.Field(log.FieldUserID, req.UserID),
+		log.Field(log.FieldGoodsNum, req.GoodsNum),
+	)
 
-	goods, err := l.svcCtx.GoodsRepo.FindByNum(l.ctx, l.svcCtx.Data, req.GoodsNum)
+	goods, err := l.svcCtx.GoodsRepo.GetGoodsInfoByNumWithCache(l.ctx, l.svcCtx.Data, req.GoodsNum)
 	if err != nil {
-		log.InfoContextf(l.ctx, "GetGoodsInfo err %s\n", err.Error())
-		return nil, err
+		log.Error(l.ctx, "load goods failed", log.Field(log.FieldError, err.Error()))
+		return buildV3Reply("", ERR_FIND_GOODS_FAILED), nil
 	}
 
-	secNum := utils.NewUuid()
-	now := time.Now()
-	record := data.PreSecKillRecord{
-		SecNum:     secNum,
-		UserID:     req.UserID,
-		GoodsID:    goods.ID,
-		OrderNum:   "",
-		Price:      goods.Price,
-		Status:     int(data.SK_STATUS_BEFORE_ORDER),
-		CreateTime: now,
-		ModifyTime: now,
-	}
-
-	alreadySecNum, err := l.svcCtx.PreStockRepo.PreDescStock(l.ctx, l.svcCtx.Data, req.UserID, goods.ID, req.Num, secNum, &record)
+	record := newPreSecKillRecord(goods, req.UserID, "")
+	secNum := record.SecNum
+	alreadySecNum, err := l.svcCtx.PreStockRepo.PreDescStock(l.ctx, l.svcCtx.Data, req.UserID, goods.ID, req.Num, secNum, record)
 	if err != nil {
-		if err.Error() == data.SecKillErrSecKilling.Error() {
-			reply.Message = err.Error() + ":" + fmt.Sprintf("%s", alreadySecNum)
-			return reply, nil
+		code := codeFromPreDescError(err)
+		if code == ERR_DUPLICATE_SECKILL {
+			log.Warn(l.ctx, "duplicate seckill request", log.Field(log.FieldSecNum, alreadySecNum))
+			return buildV3Reply(alreadySecNum, code), nil
 		}
-		log.ErrorContextf(l.ctx, "Desc stock err %s\n", err.Error())
-		return nil, err
+		log.Warn(l.ctx, "pre-desc stock failed", log.Field(log.FieldError, err.Error()))
+		return buildV3Reply("", code), nil
 	}
 
 	msg := &data.SeckillMessage{
@@ -67,10 +58,12 @@ func (l *SecKillV3Logic) SecKillV3(req *pb.SecKillV3Request) (*pb.SecKillV3Reply
 		Num:     int(req.Num),
 	}
 	if err := l.svcCtx.MessageRepo.SendSecKillMsg(l.ctx, l.svcCtx.Data, msg); err != nil {
-		log.ErrorContextf(l.ctx, "send seckill mq msg err %s\n", err.Error())
-		return nil, err
+		log.Error(l.ctx, "send seckill message failed", log.Field(log.FieldSecNum, secNum), log.Field(log.FieldError, err.Error()))
+		if failErr := markPreSecKillFailed(l.ctx, l.svcCtx, goods, req.UserID, req.Num, secNum, ERR_SEND_SECKILL_MSG_FAILED, ""); failErr != nil {
+			return nil, failErr
+		}
+		return buildV3Reply(secNum, ERR_SEND_SECKILL_MSG_FAILED), nil
 	}
 
-	reply.Data = &pb.SecKillV3ReplyData{SecNum: secNum}
-	return reply, nil
+	return buildV3Reply(secNum, SUCCESS), nil
 }

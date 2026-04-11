@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	gwlog "github.com/BitofferHub/gateway/internal/log"
 	"github.com/BitofferHub/pkg/constant"
 )
 
@@ -22,6 +23,7 @@ func (m *TraceMiddleware) Handle(next http.HandlerFunc) http.HandlerFunc {
 		}
 		w.Header().Set(constant.TraceID, traceID)
 		ctx := WithTraceID(r.Context(), traceID)
+		ctx = gwlog.WithTrace(ctx, traceID)
 		next(w, r.WithContext(ctx))
 	}
 }

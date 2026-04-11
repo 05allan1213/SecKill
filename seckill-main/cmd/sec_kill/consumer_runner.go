@@ -29,7 +29,10 @@ func (r *ConsumerRunner) Start() error {
 		defer close(r.done)
 		defer func() {
 			if recovered := recover(); recovered != nil {
-				bitlog.Errorf("seckill consumer panic: %v", recovered)
+				bitlog.Error(r.ctx, "seckill consumer panic",
+					bitlog.Field(bitlog.FieldAction, "mq.consume"),
+					bitlog.Field(bitlog.FieldError, recovered),
+				)
 			}
 		}()
 

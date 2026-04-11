@@ -3,6 +3,7 @@ package data
 import (
 	"context"
 	"encoding/json"
+
 	"github.com/BitofferHub/seckill/internal/log"
 )
 
@@ -20,7 +21,10 @@ func (r *SecKillMsgRepo) SendSecKillMsg(ctx context.Context, data *Data, msg *Se
 	producer := data.GetMQProducer()
 	msgJson, err := json.Marshal(msg)
 	if err != nil {
-		log.ErrorContextf(ctx, "json marshal err %s", err.Error())
+		log.Error(ctx, "marshal seckill message failed",
+			log.Field(log.FieldAction, "mq.marshal"),
+			log.Field(log.FieldError, err.Error()),
+		)
 		return err
 	}
 	return producer.SendMessage(ctx, msgJson)

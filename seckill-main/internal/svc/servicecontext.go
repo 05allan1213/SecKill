@@ -3,7 +3,7 @@ package svc
 import (
 	"github.com/BitofferHub/seckill/internal/config"
 	"github.com/BitofferHub/seckill/internal/data"
-	zaplog "github.com/BitofferHub/seckill/internal/log"
+	projectlog "github.com/BitofferHub/seckill/internal/log"
 )
 
 type ServiceContext struct {
@@ -20,9 +20,9 @@ type ServiceContext struct {
 }
 
 func NewServiceContext(c config.Config) *ServiceContext {
-	zaplog.Init("./log/")
+	projectlog.Init("./log/")
 
-	dataLayer, err := data.NewDataFromConfig(c.Data)
+	dataLayer, err := data.NewDataFromConfig(c.Data, c.Log)
 	if err != nil {
 		panic(err)
 	}

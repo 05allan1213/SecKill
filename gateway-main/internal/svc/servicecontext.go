@@ -32,8 +32,13 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		WriteTimeout: c.Redis.WriteTimeout,
 	})
 
-	routePolicies := make(map[string]limiter.RoutePolicy, len(c.RoutePolicies))
-	for path, policy := range c.RoutePolicies {
+	selectedPolicies := c.RoutePolicies
+	if profilePolicies, ok := c.RoutePolicyProfiles[c.LimiterProfile]; ok && len(profilePolicies) > 0 {
+		selectedPolicies = profilePolicies
+	}
+
+	routePolicies := make(map[string]limiter.RoutePolicy, len(selectedPolicies))
+	for path, policy := range selectedPolicies {
 		routePolicies[path] = limiter.RoutePolicy{
 			LimitTimeout: policy.LimitTimeout,
 			LimitRate:    policy.LimitRate,

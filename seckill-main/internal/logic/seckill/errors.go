@@ -16,6 +16,10 @@ const (
 	ERR_CREATER_USER_QUOTA_FAILED     = 8107
 	ERR_USER_QUOTA_NOT_ENOUGH         = 8108
 	ERR_FIND_USER_QUOTA_FAILED        = 8109
+	ERR_DUPLICATE_SECKILL             = 8110
+	ERR_PRE_DESC_STOCK_FAILED         = 8111
+	ERR_SEND_SECKILL_MSG_FAILED       = 8112
+	ERR_GET_SECKILL_INFO_NOT_FOUND    = 8113
 )
 
 var errMsgDic = map[int]string{
@@ -32,6 +36,10 @@ var errMsgDic = map[int]string{
 	ERR_CREATER_USER_QUOTA_FAILED:     "插入用户限额记录失败",
 	ERR_USER_QUOTA_NOT_ENOUGH:         "用户额度不足",
 	ERR_FIND_USER_QUOTA_FAILED:        "查询用户额度失败",
+	ERR_DUPLICATE_SECKILL:             "重复秒杀",
+	ERR_PRE_DESC_STOCK_FAILED:         "预扣库存失败",
+	ERR_SEND_SECKILL_MSG_FAILED:       "秒杀消息发送失败",
+	ERR_GET_SECKILL_INFO_NOT_FOUND:    "秒杀结果不存在",
 }
 
 func getErrMsg(code int) string {

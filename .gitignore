@@ -39,4 +39,8 @@ wrkbench/
 third_party/
 
 *.md
+!README.md
+!gateway-main/README.md
+!seckill-main/README.md
+!user-main/README.md
 .codex

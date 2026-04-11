@@ -7,7 +7,7 @@ Telemetry:
   Disable: true
 Middlewares:
   Trace: false
-  Log: true
+  Log: false
   Prometheus: false
   MaxConns: true
   Breaker: true
@@ -22,12 +22,17 @@ Auth:
   Secret: "secret key"
   Timeout: 1h
 
+Log:
+  AccessDetail: request
+
 Redis:
   Addr: 127.0.0.1:6379
   DB: 8
   passWord: "123456"
   read_timeout: 2s
   write_timeout: 2s
+
+LimiterProfile: compare
 
 UserRpc:
   Etcd:
@@ -45,39 +50,76 @@ SeckillRpc:
   NonBlock: true
   Timeout: 2000
 
-RoutePolicies:
-  /get_user_info:
-    limit_timeout: 2000
-    limit_rate: 1000
-    retry_time: 50
-    remarks: 查询用户信息
-  /bitstorm/get_user_info:
-    limit_timeout: 2000
-    limit_rate: 1000
-    retry_time: 50
-    remarks: 查询用户信息
-  /bitstorm/get_user_info_by_name:
-    limit_timeout: 2000
-    limit_rate: 1000
-    retry_time: 50
-    remarks: 查询用户信息
-  /bitstorm/v1/sec_kill:
-    limit_timeout: 2000
-    limit_rate: 1000
-    retry_time: 50
-    remarks: 秒杀v1
-  /bitstorm/v2/sec_kill:
-    limit_timeout: 2000
-    limit_rate: 1000
-    retry_time: 50
-    remarks: 秒杀v2
-  /bitstorm/v3/sec_kill:
-    limit_timeout: 2000
-    limit_rate: 1000
-    retry_time: 50
-    remarks: 秒杀v3
-  /bitstorm/v3/get_sec_kill_info:
-    limit_timeout: 2000
-    limit_rate: 1000
-    retry_time: 50
-    remarks: 查询秒杀状态
+RoutePolicyProfiles:
+  compare:
+    /get_user_info:
+      limit_timeout: 2000
+      limit_rate: 1000
+      retry_time: 50
+      remarks: 查询用户信息
+    /bitstorm/get_user_info:
+      limit_timeout: 2000
+      limit_rate: 1000
+      retry_time: 50
+      remarks: 查询用户信息
+    /bitstorm/get_user_info_by_name:
+      limit_timeout: 2000
+      limit_rate: 1000
+      retry_time: 50
+      remarks: 查询用户信息
+    /bitstorm/v1/sec_kill:
+      limit_timeout: 2000
+      limit_rate: 5000
+      retry_time: 50
+      remarks: 秒杀v1对比档
+    /bitstorm/v2/sec_kill:
+      limit_timeout: 2000
+      limit_rate: 5000
+      retry_time: 50
+      remarks: 秒杀v2对比档
+    /bitstorm/v3/sec_kill:
+      limit_timeout: 2000
+      limit_rate: 5000
+      retry_time: 50
+      remarks: 秒杀v3对比档
+    /bitstorm/v3/get_sec_kill_info:
+      limit_timeout: 2000
+      limit_rate: 10000
+      retry_time: 50
+      remarks: 查询秒杀状态对比档
+  protect:
+    /get_user_info:
+      limit_timeout: 2000
+      limit_rate: 1000
+      retry_time: 50
+      remarks: 查询用户信息
+    /bitstorm/get_user_info:
+      limit_timeout: 2000
+      limit_rate: 1000
+      retry_time: 50
+      remarks: 查询用户信息
+    /bitstorm/get_user_info_by_name:
+      limit_timeout: 2000
+      limit_rate: 1000
+      retry_time: 50
+      remarks: 查询用户信息
+    /bitstorm/v1/sec_kill:
+      limit_timeout: 2000
+      limit_rate: 200
+      retry_time: 50
+      remarks: 秒杀v1保护档
+    /bitstorm/v2/sec_kill:
+      limit_timeout: 2000
+      limit_rate: 400
+      retry_time: 50
+      remarks: 秒杀v2保护档
+    /bitstorm/v3/sec_kill:
+      limit_timeout: 2000
+      limit_rate: 800
+      retry_time: 50
+      remarks: 秒杀v3保护档
+    /bitstorm/v3/get_sec_kill_info:
+      limit_timeout: 2000
+      limit_rate: 2000
+      retry_time: 50
+      remarks: 查询秒杀状态保护档

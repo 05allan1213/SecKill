@@ -5,6 +5,13 @@ import "github.com/zeromicro/go-zero/zrpc"
 type Config struct {
 	zrpc.RpcServerConf
 	Data DataConf
+	Log  LogConf
+}
+
+type LogConf struct {
+	AccessDetail       string `json:",default=request"`
+	SQLMode            string `json:",default=slow"`
+	SQLSlowThresholdMs int64  `json:",default=100"`
 }
 
 type DataConf struct {
