@@ -2,6 +2,7 @@ package tb
 
 import (
 	"context"
+	"errors"
 	"github.com/redis/go-redis/v9"
 	"strings"
 )
@@ -42,6 +43,16 @@ func (tb *TBLimiter) Allow(ctx context.Context, key string, limit *TBLimit) (*Re
 }
 
 func (tb *TBLimiter) AllowN(ctx context.Context, key string, limit *TBLimit, n int) (*Result, error) {
+	if tb == nil {
+		return nil, errors.New("token bucket limiter is nil")
+	}
+	if limit == nil {
+		return nil, errors.New("token bucket limit config is nil")
+	}
+	if tb.client == nil {
+		return nil, errors.New("token bucket redis client is nil")
+	}
+
 	values := []interface{}{limit.Rate, limit.Burst, n, limit.Expire}
 	r := AllowN.EvalSha(ctx, tb.client, []string{redisPrefix + key}, values...)
 	if err := r.Err(); err != nil && strings.HasPrefix(err.Error(), "NOSCRIPT ") {

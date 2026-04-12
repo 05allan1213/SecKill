@@ -2,6 +2,7 @@ package svc
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/BitofferHub/gateway/internal/config"
@@ -14,6 +15,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 )
+
+var newGatewayLimiter = limiter.NewRateLimiter
 
 type RPCClients struct {
 	UserClient    userv1.UserClient
@@ -31,8 +34,19 @@ func newRedisClient(c config.RedisConf) *redis.Client {
 }
 
 func newRateLimiter(c config.Config, rdb *redis.Client) (*limiter.RateLimiter, error) {
+	profile := strings.TrimSpace(c.LimiterProfile)
+	if profile == "" {
+		profile = "compare"
+	}
+	if profile == "none" {
+		return nil, nil
+	}
+	if profile != "compare" && profile != "protect" {
+		return nil, fmt.Errorf("unknown LimiterProfile %q", profile)
+	}
+
 	selectedPolicies := c.RoutePolicies
-	if profilePolicies, ok := c.RoutePolicyProfiles[c.LimiterProfile]; ok && len(profilePolicies) > 0 {
+	if profilePolicies, ok := c.RoutePolicyProfiles[profile]; ok && len(profilePolicies) > 0 {
 		selectedPolicies = profilePolicies
 	}
 
@@ -46,7 +60,7 @@ func newRateLimiter(c config.Config, rdb *redis.Client) (*limiter.RateLimiter, e
 		}
 	}
 
-	return limiter.NewRateLimiter(limiter.RateLimiterConfig{
+	return newGatewayLimiter(limiter.RateLimiterConfig{
 		Routes:              routePolicies,
 		DefaultRetryTime:    50,
 		DefaultLimitTimeout: 2000,

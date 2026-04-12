@@ -23,14 +23,21 @@ Data:
     User: root
     Password: "123456"
     DataBase: bitstorm
-    MaxIdleConn: 2000
-    MaxOpenConn: 20000
-    MaxIdleTime: 30
+    MaxIdleConn: 50           # 空闲连接数，建议为MaxOpenConn的1/2
+    MaxOpenConn: 100          # 最大打开连接数，需小于MySQL max_connections
+    MaxIdleTime: 300          # 空闲连接存活时间(秒)
+    ConnMaxLifetime: 3600     # 连接最大存活时间(秒)，避免长时间使用同一连接
   Redis:
     Addr: 127.0.0.1:6379
     Db: 0
     PassWord: "123456"
-    PoolSize: 100
+    PoolSize: 200             # 连接池大小
+    MinIdleConns: 20          # 最小空闲连接数
+    MaxRetries: 3             # 最大重试次数
+    DialTimeout: 1000         # 连接超时(毫秒)
+    ReadTimeout: 1000         # 读超时(毫秒)
+    WriteTimeout: 1000        # 写超时(毫秒)
+    PoolTimeout: 2000         # 连接池超时(毫秒)
   Kafka:
     Producer:
       Brokers:
@@ -43,6 +50,7 @@ Data:
       Topic: seckill
       Offset: 0
       GroupID: seckill-consumer
+      NumConsumers: 5         # 消费者数量，建议与分区数匹配
     Retry:
       Topic: seckill-retry
       MaxAttempts: 3

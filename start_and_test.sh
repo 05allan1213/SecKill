@@ -245,6 +245,7 @@ setup_mysql_state() {
         DELETE FROM t_order;
         DELETE FROM t_seckill_record;
         DELETE FROM t_user_quota;
+        DELETE FROM t_seckill_async_result;
         INSERT INTO t_quota(goods_id, num) VALUES (1, 5)
           ON DUPLICATE KEY UPDATE num = VALUES(num);
         UPDATE t_seckill_stock SET stock = 10 WHERE goods_id = 1;

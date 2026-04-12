@@ -28,12 +28,13 @@
 
 - [etc/gateway.yaml](/home/monody/project/SecKill/gateway-main/etc/gateway.yaml)
 
-支持两套默认档位：
+支持三种 `LimiterProfile`：
 
 - `compare`
 - `protect`
+- `none`
 
-命中限流后返回 HTTP `429` 和结构化 JSON 错误响应。
+其中 `none` 会关闭 gateway 入口限流；未知 profile 会在启动时直接报错。命中限流后返回 HTTP `429` 和结构化 JSON 错误响应。
 
 ## 启动
 

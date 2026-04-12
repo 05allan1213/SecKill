@@ -3,6 +3,7 @@ package limiter
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 
 	gwlog "github.com/BitofferHub/gateway/internal/log"
 	"github.com/BitofferHub/gateway/limiter/tb"
@@ -29,6 +30,7 @@ var tbLimiter *tb.TBLimiter
 
 var routeLimits map[string]*tb.TBLimit
 var localRouteLimits map[string]*rate.Limiter
+var newTokenBucketLimiter = tb.NewTBLimiter
 
 func NewRateLimiter(config RateLimiterConfig, redisClient *redis.Client) (*RateLimiter, error) {
 	rateLimiter := &RateLimiter{
@@ -36,7 +38,10 @@ func NewRateLimiter(config RateLimiterConfig, redisClient *redis.Client) (*RateL
 	}
 	var err error
 	ctx := context.Background()
-	tbLimiter, err = tb.NewTBLimiter(ctx, redisClient)
+	if redisClient == nil {
+		return nil, errors.New("redis client is nil")
+	}
+	tbLimiter, err = newTokenBucketLimiter(ctx, redisClient)
 	if err != nil {
 		gwlog.Error(ctx, "rate limiter init failed",
 			gwlog.Field(gwlog.FieldAction, "rate_limit.init"),
@@ -62,8 +67,35 @@ func NewRateLimiter(config RateLimiterConfig, redisClient *redis.Client) (*RateL
 }
 
 func (r *RateLimiter) Allow(ctx context.Context, url string) (*Result, error) {
-	res, err := tbLimiter.Allow(ctx, url, routeLimits[url])
 	result := &Result{}
+	if r == nil {
+		gwlog.WarnEvery(ctx, "gateway.rate_limit.nil", 5*time.Second, "rate limiter is nil, allow request",
+			gwlog.Field(gwlog.FieldAction, "rate_limit.nil"),
+			gwlog.Field(gwlog.FieldRouteKey, url),
+		)
+		result.IsAllowed = true
+		return result, nil
+	}
+
+	limit := routeLimits[url]
+	if limit == nil {
+		gwlog.WarnEvery(ctx, "gateway.rate_limit.route_missing", 5*time.Second, "route rate limiter config missing, allow request",
+			gwlog.Field(gwlog.FieldAction, "rate_limit.route_missing"),
+			gwlog.Field(gwlog.FieldRouteKey, url),
+		)
+		result.IsAllowed = true
+		return result, nil
+	}
+
+	if tbLimiter == nil {
+		gwlog.WarnEvery(ctx, "gateway.rate_limit.redis_unavailable", 5*time.Second, "token bucket limiter unavailable, fallback to local limiter",
+			gwlog.Field(gwlog.FieldAction, "rate_limit.redis_unavailable"),
+			gwlog.Field(gwlog.FieldRouteKey, url),
+		)
+		return allowWithLocalFallback(ctx, url), nil
+	}
+
+	res, err := tbLimiter.Allow(ctx, url, limit)
 
 	if err != nil {
 		gwlog.WarnEvery(ctx, "gateway.rate_limit.redis_fallback", 5*time.Second, "rate limiter redis fallback",
@@ -71,24 +103,7 @@ func (r *RateLimiter) Allow(ctx context.Context, url string) (*Result, error) {
 			gwlog.Field(gwlog.FieldRouteKey, url),
 			gwlog.Field(gwlog.FieldError, err.Error()),
 		)
-		// 如果出错，使用本地限流器
-		localLimit := localRouteLimits[url]
-		if localLimit == nil {
-			// 如果限流器不存在，直接通过
-			gwlog.WarnEvery(ctx, "gateway.rate_limit.local_missing", 5*time.Second, "local rate limiter missing",
-				gwlog.Field(gwlog.FieldAction, "rate_limit.local_missing"),
-				gwlog.Field(gwlog.FieldRouteKey, url),
-			)
-			result.IsAllowed = true
-			return result, nil
-		}
-		if localLimit.Allow() {
-			result.IsAllowed = true
-			return result, nil
-		} else {
-			result.IsAllowed = false
-			return result, nil
-		}
+		return allowWithLocalFallback(ctx, url), nil
 	}
 
 	if res.Allowed > 0 {
@@ -98,6 +113,22 @@ func (r *RateLimiter) Allow(ctx context.Context, url string) (*Result, error) {
 		result.IsAllowed = false
 		return result, nil
 	}
+}
+
+func allowWithLocalFallback(ctx context.Context, url string) *Result {
+	result := &Result{}
+	localLimit := localRouteLimits[url]
+	if localLimit == nil {
+		gwlog.WarnEvery(ctx, "gateway.rate_limit.local_missing", 5*time.Second, "local rate limiter missing, allow request",
+			gwlog.Field(gwlog.FieldAction, "rate_limit.local_missing"),
+			gwlog.Field(gwlog.FieldRouteKey, url),
+		)
+		result.IsAllowed = true
+		return result
+	}
+
+	result.IsAllowed = localLimit.Allow()
+	return result
 }
 
 type RedisConfig struct {

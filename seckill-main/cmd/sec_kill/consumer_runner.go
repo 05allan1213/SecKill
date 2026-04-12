@@ -8,6 +8,7 @@ import (
 
 	"github.com/BitofferHub/seckill/internal/data"
 	bitlog "github.com/BitofferHub/seckill/internal/log"
+	"github.com/BitofferHub/seckill/internal/mq"
 	seckilllogic "github.com/BitofferHub/seckill/internal/logic/seckill"
 	"github.com/BitofferHub/seckill/internal/svc"
 )
@@ -29,36 +30,58 @@ func NewConsumerRunner(svcCtx *svc.ServiceContext) *ConsumerRunner {
 func (r *ConsumerRunner) Start() error {
 	r.done = make(chan struct{})
 	r.ctx, r.cancel = context.WithCancel(context.Background())
-	go func() {
-		r.running.Store(true)
-		defer close(r.done)
-		defer r.running.Store(false)
-		defer func() {
-			if recovered := recover(); recovered != nil {
-				bitlog.Error(r.ctx, "seckill consumer panic",
-					bitlog.Field(bitlog.FieldAction, "mq.consume"),
-					bitlog.Field(bitlog.FieldError, recovered),
-				)
-			}
-		}()
 
-		consumer := r.svcCtx.Data.GetMQConsumer()
-		if consumer == nil {
-			return
-		}
-		consumer.ConsumeMessages(r.ctx, func(ctx context.Context, message []byte) error {
-			result := seckilllogic.HandleConsumedMessageWithRetry(ctx, r.svcCtx, message, 0, "")
-			return r.handleConsumeResult(ctx, message, result, 0)
-		})
-	}()
+	// 启动多个主消费者
+	consumers := r.svcCtx.Data.GetMQConsumers()
+	for i, consumer := range consumers {
+		go r.startConsumer(i, consumer)
+	}
 
-	go r.startRetryConsumer()
+	// 启动多个 retry 消费者
+	retryConsumers := r.svcCtx.Data.GetRetryConsumers()
+	for i, consumer := range retryConsumers {
+		go r.startRetryConsumerByIndex(i, consumer)
+	}
 
 	return nil
 }
 
+// startConsumer 启动单个消费者
+func (r *ConsumerRunner) startConsumer(index int, consumer mq.Consumer) {
+	if consumer == nil {
+		return
+	}
+	r.running.Store(true)
+	defer r.running.Store(false)
+
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			bitlog.Error(r.ctx, "seckill consumer panic",
+				bitlog.Field(bitlog.FieldAction, "mq.consume"),
+				bitlog.Field("consumerIndex", index),
+				bitlog.Field(bitlog.FieldError, recovered),
+			)
+		}
+	}()
+
+	consumer.ConsumeMessages(r.ctx, func(ctx context.Context, message []byte) error {
+		result := seckilllogic.HandleConsumedMessageWithRetry(ctx, r.svcCtx, message, 0, "")
+		return r.handleConsumeResult(ctx, message, result, 0)
+	})
+}
+
 func (r *ConsumerRunner) startRetryConsumer() {
-	retryConsumer := r.svcCtx.Data.GetRetryConsumer()
+	retryConsumers := r.svcCtx.Data.GetRetryConsumers()
+	if len(retryConsumers) == 0 {
+		return
+	}
+	for i, consumer := range retryConsumers {
+		go r.startRetryConsumerByIndex(i, consumer)
+	}
+}
+
+// startRetryConsumerByIndex 启动单个 retry 消费者
+func (r *ConsumerRunner) startRetryConsumerByIndex(index int, retryConsumer mq.Consumer) {
 	if retryConsumer == nil {
 		return
 	}
@@ -210,11 +233,17 @@ func (r *ConsumerRunner) Stop(ctx context.Context) error {
 			r.cancel()
 		}
 		if r.svcCtx != nil && r.svcCtx.Data != nil {
-			if r.svcCtx.Data.GetMQConsumer() != nil {
-				r.svcCtx.Data.GetMQConsumer().Close()
+			// 关闭所有主消费者
+			for _, c := range r.svcCtx.Data.GetMQConsumers() {
+				if c != nil {
+					c.Close()
+				}
 			}
-			if r.svcCtx.Data.GetRetryConsumer() != nil {
-				r.svcCtx.Data.GetRetryConsumer().Close()
+			// 关闭所有 retry 消费者
+			for _, c := range r.svcCtx.Data.GetRetryConsumers() {
+				if c != nil {
+					c.Close()
+				}
 			}
 		}
 	})

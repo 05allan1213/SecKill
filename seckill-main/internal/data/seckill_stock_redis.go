@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/BitofferHub/seckill/internal/log"
 	"time"
+
+	"github.com/BitofferHub/seckill/internal/log"
+	"github.com/redis/go-redis/v9"
 )
 
 type PreSecKillStockRepo struct {
@@ -158,6 +160,159 @@ func (r *PreSecKillStockRepo) GetSecKillInfo(ctx context.Context, data *Data, se
 		return record, err
 	}
 	return record, err
+}
+
+// GetSecKillInfoBatch 批量获取秒杀信息，使用 Pipeline 优化
+func (r *PreSecKillStockRepo) GetSecKillInfoBatch(ctx context.Context, data *Data, secNums []string) (map[string]*PreSecKillRecord, error) {
+	if len(secNums) == 0 {
+		return make(map[string]*PreSecKillRecord), nil
+	}
+
+	// 使用原生 Redis 客户端的 Pipeline
+	redisClient := data.GetRedisClient()
+	if redisClient == nil {
+		// 降级为逐个获取
+		return r.getSecKillInfoFallback(ctx, data, secNums)
+	}
+
+	// 构建 Pipeline 命令
+	pipe := redisClient.Pipeline()
+	cmds := make(map[string]*redis.StringCmd, len(secNums))
+
+	for _, secNum := range secNums {
+		cmds[secNum] = pipe.Get(ctx, secNum)
+	}
+
+	// 执行 Pipeline
+	_, err := pipe.Exec(ctx)
+	if err != nil && err != redis.Nil {
+		return nil, fmt.Errorf("pipeline exec failed: %w", err)
+	}
+
+	// 解析结果
+	results := make(map[string]*PreSecKillRecord, len(secNums))
+	for secNum, cmd := range cmds {
+		val, err := cmd.Result()
+		if err != nil {
+			if err == redis.Nil {
+				continue // Key 不存在，跳过
+			}
+			continue // 其他错误，跳过
+		}
+
+		var record PreSecKillRecord
+		if err := json.Unmarshal([]byte(val), &record); err == nil {
+			results[secNum] = &record
+		}
+	}
+
+	return results, nil
+}
+
+// getSecKillInfoFallback 降级逐个获取
+func (r *PreSecKillStockRepo) getSecKillInfoFallback(ctx context.Context, data *Data, secNums []string) (map[string]*PreSecKillRecord, error) {
+	results := make(map[string]*PreSecKillRecord, len(secNums))
+	for _, secNum := range secNums {
+		record, err := r.GetSecKillInfo(ctx, data, secNum)
+		if err == nil && record != nil {
+			results[secNum] = record
+		}
+	}
+	return results, nil
+}
+
+// BatchSetSecKillRecords 批量设置秒杀记录，使用 Pipeline 优化
+func (r *PreSecKillStockRepo) BatchSetSecKillRecords(ctx context.Context, data *Data, records map[string]*PreSecKillRecord, ttl time.Duration) error {
+	if len(records) == 0 {
+		return nil
+	}
+
+	redisClient := data.GetRedisClient()
+	if redisClient == nil {
+		// 降级为逐个设置
+		return r.batchSetSecKillRecordsFallback(ctx, data, records, ttl)
+	}
+
+	pipe := redisClient.Pipeline()
+
+	for secNum, record := range records {
+		recordJSON, err := json.Marshal(record)
+		if err != nil {
+			continue
+		}
+		pipe.Set(ctx, secNum, recordJSON, ttl)
+	}
+
+	_, err := pipe.Exec(ctx)
+	return err
+}
+
+// batchSetSecKillRecordsFallback 降级逐个设置
+func (r *PreSecKillStockRepo) batchSetSecKillRecordsFallback(ctx context.Context, data *Data, records map[string]*PreSecKillRecord, ttl time.Duration) error {
+	// 使用原生 Redis 客户端
+	redisClient := data.GetRedisClient()
+	if redisClient != nil {
+		for secNum, record := range records {
+			recordJSON, err := json.Marshal(record)
+			if err != nil {
+				continue
+			}
+			if err := redisClient.Set(ctx, secNum, recordJSON, ttl).Err(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	// 如果没有原生客户端，尝试使用 cache 包
+	rdb := data.GetCache()
+	for secNum, record := range records {
+		recordJSON, err := json.Marshal(record)
+		if err != nil {
+			continue
+		}
+		// cache 包可能不支持 SetEX，使用 Eval 替代
+		setScript := "return redis.call('SET', KEYS[1], ARGV[1], 'EX', ARGV[2])"
+		if _, err := rdb.EvalResults(ctx, setScript, []string{secNum}, []string{string(recordJSON), fmt.Sprintf("%d", int(ttl.Seconds()))}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// BatchCheckStock 批量检查库存，使用 Pipeline 优化
+func (r *PreSecKillStockRepo) BatchCheckStock(ctx context.Context, data *Data, goodsIDs []int64) (map[int64]int64, error) {
+	if len(goodsIDs) == 0 {
+		return make(map[int64]int64), nil
+	}
+
+	redisClient := data.GetRedisClient()
+	if redisClient == nil {
+		return nil, errors.New("redis client not available")
+	}
+
+	pipe := redisClient.Pipeline()
+	cmds := make(map[int64]*redis.StringCmd, len(goodsIDs))
+
+	for _, goodsID := range goodsIDs {
+		stockKey := fmt.Sprintf("SK:Stock:%d", goodsID)
+		cmds[goodsID] = pipe.Get(ctx, stockKey)
+	}
+
+	_, err := pipe.Exec(ctx)
+	if err != nil && err != redis.Nil {
+		return nil, fmt.Errorf("pipeline exec failed: %w", err)
+	}
+
+	results := make(map[int64]int64, len(goodsIDs))
+	for goodsID, cmd := range cmds {
+		val, err := cmd.Int64()
+		if err == nil {
+			results[goodsID] = val
+		}
+	}
+
+	return results, nil
 }
 
 var (

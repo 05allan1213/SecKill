@@ -1,7 +1,9 @@
 Name: gateway
 Host: 0.0.0.0
 Port: 8998
-Timeout: 3000
+Timeout: 5000              # 压测时适当增大超时时间(毫秒)
+MaxConns: 10000            # 最大连接数
+MaxBytes: 10485760         # 最大请求体 10MB
 Telemetry:
   Name: gateway
   Disable: true
@@ -32,7 +34,7 @@ Redis:
   read_timeout: 2s
   write_timeout: 2s
 
-LimiterProfile: compare
+LimiterProfile: compare   # compare | protect | none
 
 UserRpc:
   Etcd:
@@ -68,18 +70,18 @@ RoutePolicyProfiles:
       retry_time: 50
       remarks: 查询用户信息
     /bitstorm/v1/sec_kill:
-      limit_timeout: 2000
-      limit_rate: 5000
+      limit_timeout: 5000
+      limit_rate: 100000
       retry_time: 50
       remarks: 秒杀v1对比档
     /bitstorm/v2/sec_kill:
-      limit_timeout: 2000
-      limit_rate: 5000
+      limit_timeout: 5000
+      limit_rate: 100000
       retry_time: 50
       remarks: 秒杀v2对比档
     /bitstorm/v3/sec_kill:
-      limit_timeout: 2000
-      limit_rate: 5000
+      limit_timeout: 5000
+      limit_rate: 100000
       retry_time: 50
       remarks: 秒杀v3对比档
     /bitstorm/v3/get_sec_kill_info:

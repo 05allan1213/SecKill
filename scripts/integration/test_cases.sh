@@ -54,6 +54,7 @@ reset_test_data() {
         DELETE FROM t_order WHERE goods_id = ${TEST_GOODS_ID};
         DELETE FROM t_seckill_record WHERE goods_id = ${TEST_GOODS_ID};
         DELETE FROM t_user_quota WHERE goods_id = ${TEST_GOODS_ID};
+        DELETE FROM t_seckill_async_result WHERE goods_id = ${TEST_GOODS_ID};
         INSERT INTO t_quota(goods_id, num) VALUES (${TEST_GOODS_ID}, ${TEST_QUOTA})
           ON DUPLICATE KEY UPDATE num = VALUES(num);
         UPDATE t_seckill_stock SET stock = ${TEST_STOCK} WHERE goods_id = ${TEST_GOODS_ID};

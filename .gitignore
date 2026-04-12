@@ -45,4 +45,6 @@ third_party/
 !user-main/README.md
 .codex
 report.json
+*.log
+*.hey
 *.txt
