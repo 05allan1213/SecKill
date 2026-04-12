@@ -120,3 +120,22 @@ type UserQuota struct {
 func (p *UserQuota) TableName() string {
 	return "t_user_quota"
 }
+
+type SeckillAsyncResult struct {
+	ID         int64       `gorm:"column:id"`
+	SecNum     string      `gorm:"column:sec_num"`
+	UserID     int64       `gorm:"column:user_id"`
+	GoodsID    int64       `gorm:"column:goods_id"`
+	GoodsNum   string      `gorm:"column:goods_num"`
+	OrderNum   string      `gorm:"column:order_num"`
+	Status     int         `gorm:"column:status"`
+	Reason     string      `gorm:"column:reason"`
+	Attempt    int         `gorm:"column:attempt"`
+	LastError  string      `gorm:"column:last_error"`
+	CreateTime *time.Time  `gorm:"column:create_time;default:null"`
+	ModifyTime *time.Time  `gorm:"column:modify_time;default:null"`
+}
+
+func (p *SeckillAsyncResult) TableName() string {
+	return "t_seckill_async_result"
+}

@@ -122,3 +122,22 @@ INSERT IGNORE INTO `t_seckill_stock`
   (`id`, `goods_id`, `stock`)
 VALUES
   (1, 1, 3);
+
+CREATE TABLE IF NOT EXISTS `t_seckill_async_result` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT 'ID',
+  `sec_num` varchar(128) NOT NULL COMMENT '秒杀号',
+  `user_id` bigint(20) NOT NULL COMMENT '用户ID',
+  `goods_id` bigint(20) NOT NULL COMMENT '商品ID',
+  `goods_num` varchar(128) DEFAULT NULL COMMENT '商品编号',
+  `order_num` varchar(128) DEFAULT NULL COMMENT '订单号',
+  `status` int(11) NOT NULL COMMENT '状态: 1=处理中, 2=成功, 6=失败',
+  `reason` varchar(512) DEFAULT NULL COMMENT '失败原因',
+  `attempt` int(11) NOT NULL DEFAULT 0 COMMENT '重试次数',
+  `last_error` varchar(512) DEFAULT NULL COMMENT '最后错误信息',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `modify_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '修改时间',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `idx_secnum` (`sec_num`),
+  KEY `idx_userid` (`user_id`),
+  KEY `idx_goodsid` (`goods_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='秒杀异步结果表';

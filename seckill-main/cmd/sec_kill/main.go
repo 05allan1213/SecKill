@@ -71,6 +71,27 @@ func main() {
 				return nil
 			},
 		},
+		{
+			Name: "retry_producer",
+			Run: func(ctx context.Context) error {
+				return svcCtx.Data.PingRetryProducer(ctx)
+			},
+		},
+		{
+			Name: "dlq_producer",
+			Run: func(ctx context.Context) error {
+				return svcCtx.Data.PingDLQProducer(ctx)
+			},
+		},
+		{
+			Name: "retry_consumer",
+			Run: func(context.Context) error {
+				if !consumerRunner.RetryRunning() {
+					return fmt.Errorf("retry consumer not running")
+				}
+				return nil
+			},
+		},
 	})
 	healthSrv.Start()
 	defer func() {

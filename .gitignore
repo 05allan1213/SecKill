@@ -44,3 +44,5 @@ third_party/
 !seckill-main/README.md
 !user-main/README.md
 .codex
+report.json
+*.txt

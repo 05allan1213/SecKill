@@ -18,11 +18,17 @@ type managedKafkaConsumer struct {
 }
 
 func newManagedKafkaConsumer(conf config.KafkaConsumerConf) mq.Consumer {
-	reader := kafka.NewReader(kafka.ReaderConfig{
+	readerCfg := kafka.ReaderConfig{
 		Brokers: conf.Brokers,
 		Topic:   conf.Topic,
-	})
-	reader.SetOffset(conf.Offset)
+	}
+	if conf.GroupID != "" {
+		readerCfg.GroupID = conf.GroupID
+	}
+	reader := kafka.NewReader(readerCfg)
+	if conf.Offset > 0 && conf.GroupID == "" {
+		reader.SetOffset(conf.Offset)
+	}
 
 	return &managedKafkaConsumer{reader: reader}
 }

@@ -12,11 +12,14 @@ MYSQL_PORT="${MYSQL_PORT:-3307}"
 MYSQL_USER="${MYSQL_USER:-root}"
 MYSQL_PASSWORD="${MYSQL_PASSWORD:-123456}"
 MYSQL_DB="${MYSQL_DB:-bitstorm}"
+MYSQL_CONTAINER="${MYSQL_CONTAINER:-mks-mysql}"
 REDIS_HOST="${REDIS_HOST:-127.0.0.1}"
 REDIS_PORT="${REDIS_PORT:-6379}"
 REDIS_PASSWORD="${REDIS_PASSWORD:-123456}"
+REDIS_CONTAINER="${REDIS_CONTAINER:-mks-redis}"
 SECKILL_REDIS_DB="${SECKILL_REDIS_DB:-0}"
 GATEWAY_REDIS_DB="${GATEWAY_REDIS_DB:-8}"
+USE_DOCKER="${USE_DOCKER:-true}"
 USERNAME="${USERNAME:-admin}"
 USER_PASSWORD="${USER_PASSWORD:-123321}"
 GOODS_ID="${GOODS_ID:-1}"
@@ -37,22 +40,33 @@ require_cmd() {
 }
 
 require_cmd curl
-require_cmd mysql
-require_cmd redis-cli
 require_cmd hey
 
 mysql_exec() {
-  MYSQL_PWD="${MYSQL_PASSWORD}" mysql \
-    -h "${MYSQL_HOST}" \
-    -P "${MYSQL_PORT}" \
-    -u "${MYSQL_USER}" \
-    --batch --raw --skip-column-names \
-    "${MYSQL_DB}" \
-    -e "$1"
+  local query="$1"
+  if [[ "${USE_DOCKER}" == "true" ]]; then
+    docker exec "${MYSQL_CONTAINER}" mysql -uroot -p"${MYSQL_PASSWORD}" \
+      --batch --raw --skip-column-names \
+      "${MYSQL_DB}" -e "${query}" 2>/dev/null
+  else
+    MYSQL_PWD="${MYSQL_PASSWORD}" mysql \
+      -h "${MYSQL_HOST}" \
+      -P "${MYSQL_PORT}" \
+      -u "${MYSQL_USER}" \
+      --batch --raw --skip-column-names \
+      "${MYSQL_DB}" \
+      -e "${query}"
+  fi
 }
 
 redis_exec() {
-  redis-cli -h "${REDIS_HOST}" -p "${REDIS_PORT}" -a "${REDIS_PASSWORD}" -n "$1" "$2" "${@:3}" >/dev/null
+  local db="$1"
+  shift
+  if [[ "${USE_DOCKER}" == "true" ]]; then
+    docker exec "${REDIS_CONTAINER}" redis-cli -a "${REDIS_PASSWORD}" -n "${db}" "$@" >/dev/null 2>&1
+  else
+    redis-cli -h "${REDIS_HOST}" -p "${REDIS_PORT}" -a "${REDIS_PASSWORD}" -n "${db}" "$@" >/dev/null 2>&1
+  fi
 }
 
 login() {
@@ -216,6 +230,15 @@ print_summary() {
   printf '\n'
 }
 
+declare -A CASE_QPS
+declare -A CASE_P95
+declare -A CASE_SUCCESS
+declare -A CASE_LIMITED
+declare -A CASE_FAILED
+declare -A CASE_V3_COMPLETED
+declare -A CASE_V3_FAILED
+declare -A CASE_V3_PENDING
+
 run_case() {
   local version="$1"
   local endpoint="$2"
@@ -233,16 +256,145 @@ run_case() {
   limited="$(count_limited "${responses}")"
   failed="$(count_business_failed "${responses}")"
 
+  CASE_QPS["${version}"]="${qps}"
+  CASE_P95["${version}"]="${p95}"
+  CASE_SUCCESS["${version}"]="${success}"
+  CASE_LIMITED["${version}"]="${limited}"
+  CASE_FAILED["${version}"]="${failed}"
+
   if [[ "${version}" == "v3" ]]; then
     v3_stats="$(poll_v3_results "${responses}")"
     v3_completed="$(printf '%s' "${v3_stats}" | cut -f1)"
     v3_failed="$(printf '%s' "${v3_stats}" | cut -f2)"
     v3_pending="$(printf '%s' "${v3_stats}" | cut -f3)"
+    CASE_V3_COMPLETED["${version}"]="${v3_completed}"
+    CASE_V3_FAILED["${version}"]="${v3_failed}"
+    CASE_V3_PENDING["${version}"]="${v3_pending}"
     print_summary "${version}" "${qps}" "${p95}" "${success}" "${limited}" "${failed}" "${v3_completed}" "${v3_failed}" "${v3_pending}"
     return
   fi
 
   print_summary "${version}" "${qps}" "${p95}" "${success}" "${limited}" "${failed}"
+}
+
+generate_json_report() {
+  local report_file="${OUT_DIR}/report.json"
+  local timestamp
+  timestamp="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+
+  cat > "${report_file}" << EOF
+{
+  "timestamp": "${timestamp}",
+  "config": {
+    "gateway_url": "${GATEWAY_URL}",
+    "requests": ${REQUESTS},
+    "connections": ${CONNECTIONS},
+    "stock": ${STOCK},
+    "user_limit": ${USER_LIMIT}
+  },
+  "results": {
+    "v1": {
+      "qps": ${CASE_QPS["v1"]:-0},
+      "p95": "${CASE_P95["v1"]:-0}",
+      "success": ${CASE_SUCCESS["v1"]:-0},
+      "limited": ${CASE_LIMITED["v1"]:-0},
+      "business_failed": ${CASE_FAILED["v1"]:-0}
+    },
+    "v2": {
+      "qps": ${CASE_QPS["v2"]:-0},
+      "p95": "${CASE_P95["v2"]:-0}",
+      "success": ${CASE_SUCCESS["v2"]:-0},
+      "limited": ${CASE_LIMITED["v2"]:-0},
+      "business_failed": ${CASE_FAILED["v2"]:-0}
+    },
+    "v3": {
+      "qps": ${CASE_QPS["v3"]:-0},
+      "p95": "${CASE_P95["v3"]:-0}",
+      "success": ${CASE_SUCCESS["v3"]:-0},
+      "limited": ${CASE_LIMITED["v3"]:-0},
+      "business_failed": ${CASE_FAILED["v3"]:-0},
+      "v3_completed": ${CASE_V3_COMPLETED["v3"]:-0},
+      "v3_failed": ${CASE_V3_FAILED["v3"]:-0},
+      "v3_pending": ${CASE_V3_PENDING["v3"]:-0}
+    }
+  }
+}
+EOF
+  echo "JSON report saved to ${report_file}"
+}
+
+print_comparison_table() {
+  echo ""
+  echo "========================================"
+  echo "Performance Comparison Table"
+  echo "========================================"
+  printf "%-8s | %-12s | %-12s | %-8s | %-8s | %-8s\n" "Version" "QPS" "P95" "Success" "Limited" "Failed"
+  echo "-------------------------------------------------------------------------"
+  
+  for v in v1 v2 v3; do
+    local qps="${CASE_QPS["${v}"]:-0}"
+    local p95="${CASE_P95["${v}"]:-0}"
+    local success="${CASE_SUCCESS["${v}"]:-0}"
+    local limited="${CASE_LIMITED["${v}"]:-0}"
+    local failed="${CASE_FAILED["${v}"]:-0}"
+    printf "%-8s | %-12s | %-12s | %-8s | %-8s | %-8s\n" "${v}" "${qps}" "${p95}" "${success}" "${limited}" "${failed}"
+  done
+  
+  echo ""
+  echo "V3 Async Results:"
+  printf "  Completed: %s, Failed: %s, Pending: %s\n" \
+    "${CASE_V3_COMPLETED["v3"]:-0}" "${CASE_V3_FAILED["v3"]:-0}" "${CASE_V3_PENDING["v3"]:-0}"
+}
+
+run_assertions() {
+  local assertions_passed=0
+  local assertions_failed=0
+
+  echo ""
+  echo "========================================"
+  echo "Assertions"
+  echo "========================================"
+
+  local v1_qps v2_qps
+  v1_qps="${CASE_QPS["v1"]:-0}"
+  v2_qps="${CASE_QPS["v2"]:-0}"
+
+  if awk "BEGIN {exit !(${v2_qps} >= ${v1_qps} * 0.9)}"; then
+    echo "✅ PASS: V2 QPS >= V1 QPS (10% tolerance)"
+    assertions_passed=$((assertions_passed + 1))
+  else
+    echo "❌ FAIL: V2 QPS < V1 QPS (V1=${v1_qps}, V2=${v2_qps})"
+    assertions_failed=$((assertions_failed + 1))
+  fi
+
+  for v in v1 v2 v3; do
+    local success="${CASE_SUCCESS["${v}"]:-0}"
+    if (( success <= STOCK )); then
+      echo "✅ PASS: ${v} orders not exceed stock (success=${success}, stock=${STOCK})"
+      assertions_passed=$((assertions_passed + 1))
+    else
+      echo "❌ FAIL: ${v} orders exceed stock (success=${success}, stock=${STOCK})"
+      assertions_failed=$((assertions_failed + 1))
+    fi
+  done
+
+  for v in v1 v2 v3; do
+    local limited="${CASE_LIMITED["${v}"]:-0}"
+    if (( limited > 0 )); then
+      echo "✅ PASS: ${v} quota enforced (limited=${limited})"
+      assertions_passed=$((assertions_passed + 1))
+    else
+      echo "⚠️  WARN: ${v} no quota limit triggered"
+    fi
+  done
+
+  echo ""
+  echo "Assertions Summary: ${assertions_passed} passed, ${assertions_failed} failed"
+
+  if (( assertions_failed > 0 )); then
+    return 1
+  fi
+  return 0
 }
 
 echo "Phase3 performance compare"
@@ -259,3 +411,9 @@ run_case "v2" "/bitstorm/v2/sec_kill"
 run_case "v3" "/bitstorm/v3/sec_kill"
 
 echo "raw outputs saved in ${OUT_DIR}"
+
+print_comparison_table
+
+generate_json_report
+
+run_assertions

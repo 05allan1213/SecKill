@@ -33,6 +33,150 @@
 - 想看数据库事务、Redis 预扣、MQ 异步三种方案怎么落到代码里
 - 想把一个微服务项目从 HTTP 入口一路追到库存、订单和结果查询
 
+## 系统架构图
+
+```mermaid
+graph TB
+    subgraph Client
+        U[用户/客户端]
+    end
+
+    subgraph Gateway
+        GW[gateway-main<br/>HTTP 网关]
+        GW --> |JWT 鉴权| AUTH[Auth Middleware]
+        GW --> |限流| LIMIT[Rate Limiter]
+    end
+
+    subgraph Services
+        USER[user-main<br/>用户服务]
+        SECKILL[seckill-main<br/>秒杀服务]
+    end
+
+    subgraph Infrastructure
+        MYSQL[(MySQL)]
+        REDIS[(Redis)]
+        KAFKA[Kafka]
+        ETCD[Etcd]
+    end
+
+    U --> |HTTP| GW
+    GW --> |gRPC| USER
+    GW --> |gRPC| SECKILL
+    
+    USER --> MYSQL
+    SECKILL --> MYSQL
+    SECKILL --> REDIS
+    SECKILL --> KAFKA
+    
+    USER -.-> |服务注册| ETCD
+    SECKILL -.-> |服务注册| ETCD
+    GW -.-> |服务发现| ETCD
+```
+
+## V1 / V2 / V3 时序图
+
+### V1：数据库事务秒杀
+
+```mermaid
+sequenceDiagram
+    participant U as 用户
+    participant GW as Gateway
+    participant SK as Seckill RPC
+    participant DB as MySQL
+
+    U->>GW: POST /bitstorm/v1/sec_kill
+    GW->>GW: JWT 鉴权
+    GW->>SK: SecKillV1 RPC
+    SK->>DB: 查询商品
+    SK->>DB: BEGIN TRANSACTION
+    SK->>DB: 校验用户额度
+    SK->>DB: 扣减库存
+    SK->>DB: 创建订单
+    SK->>DB: 创建秒杀记录
+    SK->>DB: COMMIT
+    SK-->>GW: 返回订单号
+    GW-->>U: 返回结果
+```
+
+### V2：Redis 预扣 + 同步落库
+
+```mermaid
+sequenceDiagram
+    participant U as 用户
+    participant GW as Gateway
+    participant SK as Seckill RPC
+    participant R as Redis
+    participant DB as MySQL
+
+    U->>GW: POST /bitstorm/v2/sec_kill
+    GW->>GW: JWT 鉴权
+    GW->>SK: SecKillV2 RPC
+    SK->>R: Lua 预扣库存
+    alt 预扣成功
+        SK->>DB: BEGIN TRANSACTION
+        SK->>DB: 校验用户额度
+        SK->>DB: 扣减库存
+        SK->>DB: 创建订单
+        SK->>DB: COMMIT
+        alt 落库成功
+            SK->>R: 写入成功状态
+            SK-->>GW: 返回订单号
+        else 落库失败
+            SK->>R: 回补库存
+            SK-->>GW: 返回失败
+        end
+    else 预扣失败
+        SK-->>GW: 返回失败（库存不足/重复秒杀/限购超限）
+    end
+    GW-->>U: 返回结果
+```
+
+### V3：Redis 预扣 + MQ 异步
+
+```mermaid
+sequenceDiagram
+    participant U as 用户
+    participant GW as Gateway
+    participant SK as Seckill RPC
+    participant R as Redis
+    participant MQ as Kafka
+    participant CONSUMER as Consumer
+    participant DB as MySQL
+
+    U->>GW: POST /bitstorm/v3/sec_kill
+    GW->>GW: JWT 鉴权
+    GW->>SK: SecKillV3 RPC
+    SK->>R: Lua 预扣库存
+    alt 预扣成功
+        SK->>MQ: 发送秒杀消息
+        SK-->>GW: 返回 secNum（排队中）
+    else 预扣失败
+        SK-->>GW: 返回失败
+    end
+    GW-->>U: 返回 secNum
+
+    Note over MQ,CONSUMER: 异步处理
+    MQ->>CONSUMER: 消费消息
+    CONSUMER->>DB: BEGIN TRANSACTION
+    CONSUMER->>DB: 校验用户额度
+    CONSUMER->>DB: 扣减库存
+    CONSUMER->>DB: 创建订单
+    CONSUMER->>DB: COMMIT
+    alt 成功
+        CONSUMER->>R: 写入成功状态 + orderNum
+    else 失败
+        CONSUMER->>MQ: 重试或转 DLQ
+        CONSUMER->>R: 回补库存 + 写入失败状态
+    end
+
+    U->>GW: GET /bitstorm/v3/get_sec_kill_info
+    GW->>SK: GetSecKillInfo RPC
+    SK->>R: 查询预秒杀状态
+    SK->>DB: Redis 为处理中/缺失时查结果表和历史记录
+    SK-->>GW: 返回状态
+    GW-->>U: 返回结果
+```
+
 ## 技术栈
 
 ### 核心框架
@@ -51,7 +195,7 @@
 - `Redis`
   - 热点商品缓存、库存预扣、重复秒杀和限购前置校验、限流依赖
 - `Kafka`
-  - `V3` 的异步削峰和下单处理
+  - `V3` 的异步削峰、重试队列和死信队列
 - `Etcd`
   - RPC 服务注册与发现
 - `JWT`
@@ -78,6 +222,7 @@ SecKill
 │   ├── internal/                # handler/logic/middleware/svc 等实现
 │   └── limiter/                 # 路由限流实现
 ├── scripts/
+│   ├── integration/             # 端到端集成测试
 │   └── perf/                    # 压测和对比脚本
 ├── seckill-main/                # 秒杀核心服务
 │   ├── api/                     # protobuf 定义
@@ -97,9 +242,7 @@ SecKill
 │   └── sql/                     # 用户表结构参考
 ├── docker-compose.yml           # 本地依赖编排
 ├── start_and_test.sh            # 一键启动和功能演示脚本
-├── 学习.md                       # 主流程、代码阅读顺序、V1/V2/V3 说明
-├── 第三阶段性能优化说明.md       # 性能对比和压测说明
-└── 迭代优化计划.md               # 本轮迭代目标与阶段计划
+└── 学习.md                       # 主流程、代码阅读顺序、V1/V2/V3 说明
 ```
 
 ## 各目录作用
@@ -113,7 +256,9 @@ SecKill
 - `docker`
   - 依赖服务初始化脚本，尤其是 MySQL 初始表结构和测试数据
 - `scripts/perf`
-  - 第三阶段压测和结果对比脚本
+  - 压测和结果对比脚本（含自动断言）
+- `scripts/integration`
+  - 端到端集成测试脚本
 - `start_and_test.sh`
   - 最快的演示入口，会拉起依赖、启动服务、重置测试数据并跑接口
 
@@ -270,6 +415,19 @@ gateway 的默认映射：
 
 所以客户端现在不会直接看到底层数据库或网络错误文本。
 
+`V3` 的 Kafka 失败处理现在是完整闭环：
+
+- 业务失败
+  - 直接写失败结果，不重试
+- 临时基础设施失败
+  - 进入 `retry` topic，超过最大次数后转 `DLQ`
+- 毒消息
+  - 直接进 `DLQ`
+- `GetSecKillInfo`
+  - 先看 Redis
+  - Redis 已经是最终态时直接返回
+  - Redis 还是 `BEFORE_ORDER` 或数据缺失时，再查 `t_seckill_async_result` 和 `t_seckill_record`
+
 ## 健康检查
 
 为了让启动脚本和本地排查更稳定，现在三个服务都有健康探针：
@@ -293,6 +451,16 @@ gateway 的默认映射：
 
 `start_and_test.sh` 现在会优先等待 `user-main` 和 `seckill-main` 的 `/ready`，以及 gateway 的 `/health`。
 
+其中 `seckill-main` 的 `/ready` 现在会检查：
+
+- MySQL
+- Redis
+- Kafka 主 producer
+- retry producer
+- DLQ producer
+- 主 consumer runner
+- retry consumer runner
+
 ## V1 / V2 / V3 怎么看
 
 - `V1`
@@ -305,8 +473,6 @@ gateway 的默认映射：
 更详细的对比和代码阅读顺序见：
 
 - [学习.md](/home/monody/project/SecKill/学习.md)
-- [第三阶段性能优化说明.md](/home/monody/project/SecKill/第三阶段性能优化说明.md)
-- [迭代优化计划.md](/home/monody/project/SecKill/迭代优化计划.md)
 
 ## 建议阅读顺序
 
@@ -342,3 +508,60 @@ bash ./scripts/perf/run_phase3_compare.sh
 ```
 
 这一步依赖本地已经安装 `hey`。
+
+## 测试
+
+### 集成测试
+
+运行端到端集成测试：
+
+```bash
+bash ./scripts/integration/run_e2e_test.sh
+```
+
+集成测试包含：
+
+- 完整业务流程测试（登录 → 秒杀 → 查询）
+- V1/V2/V3 三个版本测试
+- 并发秒杀测试（验证库存不超卖）
+- 限购功能测试（验证限购不超限）
+
+单独运行某个测试：
+
+```bash
+# 仅测试 V1 流程
+bash ./scripts/integration/run_e2e_test.sh test v1
+
+# 测试并发秒杀
+bash ./scripts/integration/run_e2e_test.sh test concurrent
+
+# 测试限购功能
+bash ./scripts/integration/run_e2e_test.sh test quota
+```
+
+### 压测断言
+
+压测脚本 `scripts/perf/run_phase3_compare.sh` 已增加自动断言能力：
+
+- **V2 QPS 优于 V1**：允许 10% 误差范围
+- **成功订单不超过库存**：验证库存不超卖
+- **限购约束生效**：验证限购功能正常
+
+运行压测后会输出断言结果：
+
+```
+========================================
+Assertions
+========================================
+✅ PASS: V2 QPS >= V1 QPS (10% tolerance)
+✅ PASS: V1 orders not exceed stock
+✅ PASS: V2 orders not exceed stock
+✅ PASS: V3 orders not exceed stock
+✅ PASS: V1 quota enforced
+✅ PASS: V2 quota enforced
+✅ PASS: V3 quota enforced
+
+Assertions Summary: 7 passed, 0 failed
+```
+
+断言失败时脚本返回非零退出码，可用于 CI/CD 流程。

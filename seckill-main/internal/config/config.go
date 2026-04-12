@@ -52,6 +52,8 @@ type RedisConf struct {
 type KafkaConf struct {
 	Producer KafkaProducerConf
 	Consumer KafkaConsumerConf
+	Retry    KafkaRetryConf
+	DLQ      KafkaDLQConf
 }
 
 type KafkaProducerConf struct {
@@ -64,4 +66,15 @@ type KafkaConsumerConf struct {
 	Brokers []string
 	Topic   string
 	Offset  int64
+	GroupID string `json:",default=seckill-consumer"`
+}
+
+type KafkaRetryConf struct {
+	Topic      string `json:",default=seckill-retry"`
+	MaxAttempts int   `json:",default=3"`
+	BackoffMs  int    `json:",default=1000"`
+}
+
+type KafkaDLQConf struct {
+	Topic string `json:",default=seckill-dlq"`
 }

@@ -19,12 +19,16 @@ import (
 
 // Data .
 type Data struct {
-	db         *gorm.DB
-	rdb        *cache.Client
-	mqProducer mq.Producer
-	mqConsumer mq.Consumer
-	brokers    []string
-	closeOnce  sync.Once
+	db            *gorm.DB
+	rdb           *cache.Client
+	mqProducer    mq.Producer
+	mqConsumer    mq.Consumer
+	retryProducer mq.Producer
+	dlqProducer   mq.Producer
+	retryConsumer mq.Consumer
+	brokers       []string
+	conf          cfg.DataConf
+	closeOnce     sync.Once
 }
 
 var data *Data
@@ -48,13 +52,34 @@ func (p *Data) GetMQConsumer() mq.Consumer {
 	return p.mqConsumer
 }
 
+func (p *Data) GetRetryProducer() mq.Producer {
+	return p.retryProducer
+}
+
+func (p *Data) GetDLQProducer() mq.Producer {
+	return p.dlqProducer
+}
+
+func (p *Data) GetRetryConsumer() mq.Consumer {
+	return p.retryConsumer
+}
+
 func (p *Data) Close() {
 	p.closeOnce.Do(func() {
 		if p.mqConsumer != nil {
 			p.mqConsumer.Close()
 		}
+		if p.retryConsumer != nil {
+			p.retryConsumer.Close()
+		}
 		if p.mqProducer != nil {
 			p.mqProducer.Close()
+		}
+		if p.retryProducer != nil {
+			p.retryProducer.Close()
+		}
+		if p.dlqProducer != nil {
+			p.dlqProducer.Close()
 		}
 	})
 }
@@ -121,6 +146,28 @@ func (p *Data) PingKafkaProducer(ctx context.Context) error {
 	return conn.Close()
 }
 
+func (p *Data) PingRetryProducer(ctx context.Context) error {
+	if p == nil || p.retryProducer == nil {
+		return errors.New("retry producer not configured")
+	}
+	conn, err := (&kafka.Dialer{}).DialContext(ctx, "tcp", p.brokers[0])
+	if err != nil {
+		return err
+	}
+	return conn.Close()
+}
+
+func (p *Data) PingDLQProducer(ctx context.Context) error {
+	if p == nil || p.dlqProducer == nil {
+		return errors.New("dlq producer not configured")
+	}
+	conn, err := (&kafka.Dialer{}).DialContext(ctx, "tcp", p.brokers[0])
+	if err != nil {
+		return err
+	}
+	return conn.Close()
+}
+
 func NewDataFromConfig(dt cfg.DataConf, logConf cfg.LogConf) (*Data, error) {
 	db, err := openDB(dt.Database, logConf)
 	if err != nil {
@@ -140,13 +187,39 @@ func NewDataFromConfig(dt cfg.DataConf, logConf cfg.LogConf) (*Data, error) {
 	if producer == nil {
 		panic("nil producer")
 	}
+	
+	var retryProducer, dlqProducer mq.Producer
+	var retryConsumer mq.Consumer
+	if dt.Kafka.Retry.Topic != "" {
+		retryProducer = mq.NewKafkaProducer(
+			mq.WithBrokers(dt.Kafka.Producer.Brokers),
+			mq.WithTopic(dt.Kafka.Retry.Topic),
+			mq.WithAck(1),
+		)
+		retryConsumerConf := dt.Kafka.Consumer
+		retryConsumerConf.Topic = dt.Kafka.Retry.Topic
+		retryConsumerConf.GroupID = dt.Kafka.Consumer.GroupID + "-retry"
+		retryConsumer = newManagedKafkaConsumer(retryConsumerConf)
+	}
+	if dt.Kafka.DLQ.Topic != "" {
+		dlqProducer = mq.NewKafkaProducer(
+			mq.WithBrokers(dt.Kafka.Producer.Brokers),
+			mq.WithTopic(dt.Kafka.DLQ.Topic),
+			mq.WithAck(1),
+		)
+	}
+	
 	consumer := newManagedKafkaConsumer(dt.Kafka.Consumer)
 	dta := &Data{
-		db:         db,
-		rdb:        cache.GetRedisCli(),
-		mqProducer: producer,
-		mqConsumer: consumer,
-		brokers:    append([]string(nil), dt.Kafka.Producer.Brokers...),
+		db:            db,
+		rdb:           cache.GetRedisCli(),
+		mqProducer:    producer,
+		mqConsumer:    consumer,
+		retryProducer: retryProducer,
+		dlqProducer:   dlqProducer,
+		retryConsumer: retryConsumer,
+		brokers:       append([]string(nil), dt.Kafka.Producer.Brokers...),
+		conf:          dt,
 	}
 	data = dta
 	return dta, nil

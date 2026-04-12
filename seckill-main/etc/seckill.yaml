@@ -42,3 +42,10 @@ Data:
         - 127.0.0.1:9092
       Topic: seckill
       Offset: 0
+      GroupID: seckill-consumer
+    Retry:
+      Topic: seckill-retry
+      MaxAttempts: 3
+      BackoffMs: 1000
+    DLQ:
+      Topic: seckill-dlq

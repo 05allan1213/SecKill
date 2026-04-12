@@ -69,3 +69,12 @@ func (r *SecKillRecordRepo) OutOfTime(ctx context.Context, data *Data, orderID s
 func (r *SecKillRecordRepo) ListAll(ctx context.Context, data *Data) ([]*SecKillRecord, error) {
 	return nil, nil
 }
+
+func (r *SecKillRecordRepo) FindBySecNum(ctx context.Context, data *Data, secNum string) (*SecKillRecord, error) {
+	var record SecKillRecord
+	err := data.GetDB().WithContext(ctx).Where("sec_num = ?", secNum).First(&record).Error
+	if err != nil {
+		return nil, err
+	}
+	return &record, nil
+}
